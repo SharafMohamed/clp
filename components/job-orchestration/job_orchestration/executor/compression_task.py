@@ -58,7 +58,8 @@ def run_clp(clp_config: ClpIoConfig, clp_home: pathlib.Path, data_dir: pathlib.P
         str(clp_config.output.target_dictionaries_size),
         '--target-segment-size', str(clp_config.output.target_segment_size),
         '--target-encoded-file-size', str(clp_config.output.target_encoded_file_size),
-        '--db-config-file', str(db_config_file_path)
+        '--db-config-file', str(db_config_file_path),
+        '--config-file', str(clp_home / 'etc' / 'clp.rc'),
     ]
     if path_prefix_to_remove:
         compression_cmd.append('--remove-path-prefix')
