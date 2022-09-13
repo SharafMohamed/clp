@@ -75,9 +75,14 @@ void LogTypeDictionaryEntry::add_constant (const string& value_containing_consta
     m_value.append(value_containing_constant, begin_pos, length);
 }
 
-void LogTypeDictionaryEntry::add_non_double_var () {
+void LogTypeDictionaryEntry::add_non_double_schema_var (char var_id) {
     m_var_positions.push_back(m_value.length());
-    add_non_double_var(m_value);
+    add_non_double_schema_var(m_value, var_id);
+}
+
+void LogTypeDictionaryEntry::add_non_double_heuristic_var () {
+    m_var_positions.push_back(m_value.length());
+    add_non_double_heuristic_var(m_value);
 }
 
 void LogTypeDictionaryEntry::add_double_var () {
@@ -162,7 +167,7 @@ ErrorCode LogTypeDictionaryEntry::try_read_from_file (streaming_compression::Dec
                 add_constant(constant, 0, constant.length());
                 constant.clear();
 
-                add_non_double_var();
+                add_non_double_heuristic_var();
             } else if ((char)LogTypeDictionaryEntry::VarDelim::Double == c) {
                 add_constant(constant, 0, constant.length());
                 constant.clear();

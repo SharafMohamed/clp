@@ -52,7 +52,13 @@ public:
      * Adds a non-double variable delimiter to the given logtype
      * @param logtype
      */
-    static void add_non_double_var (std::string& logtype) { logtype += (char)VarDelim::NonDouble; }
+    static void add_non_double_schema_var (std::string& logtype, char var_id) { logtype += (char)VarDelim::NonDouble;
+                                                                                logtype += var_id; }   
+    /**
+     * Adds a non-double variable delimiter to the given logtype
+     * @param logtype
+     */
+    static void add_non_double_heuristic_var (std::string& logtype) { logtype += (char)VarDelim::NonDouble; }
     /**
      * Adds a double variable delimiter to the given logtype
      * @param logtype
@@ -96,7 +102,11 @@ public:
     /**
      * Adds a non-double variable delimiter
      */
-    void add_non_double_var ();
+    void add_non_double_schema_var (char var_id);
+    /**
+     * Adds a non-double variable delimiter
+     */
+    void add_non_double_heuristic_var ();
     /**
      * Adds a double variable delimiter
      */
