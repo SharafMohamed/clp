@@ -168,9 +168,9 @@ namespace compressor_frontend {
         uint32_t m_last_match_line;
         bool m_match;
         const std::vector<int>* m_type_ids;
-        static uint32_t m_current_buff_size;
         bool m_is_delimiter[cSizeOfByte];
         bool m_is_first_char[cSizeOfByte];
+        static uint32_t m_current_buff_size;
         char* m_active_byte_buf;
         char** m_byte_buf_ptr;
         const uint32_t* m_byte_buf_size_ptr;
