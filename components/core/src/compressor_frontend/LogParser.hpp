@@ -11,6 +11,8 @@
 // Project headers
 #include "../Stopwatch.hpp"
 #include "LALR1Parser.hpp"
+#include "InputBuffer.hpp"
+#include "OutputBuffer.hpp"
 #include "SchemaParser.hpp"
 
 namespace compressor_frontend {
@@ -21,28 +23,48 @@ namespace compressor_frontend {
     /// TODO: try not inheriting from LALR1Parser (and compare c-array vs. vectors (its underlying array) for buffers afterwards)
     class LogParser : public LALR1Parser<RegexNFAByteState, RegexDFAByteState> {
     public:
+        enum class ParsingAction {
+            None,
+            NeedMoreInputData,
+            Compress,
+            CompressAndFinish
+        };
+
         // Constructor
-        LogParser (const std::string& schema_file_path);
+        explicit LogParser (const std::string& schema_file_path);
+
+        /**
+         * Reset the parser. Return true if EOF was reached, false otherwise.
+         * @param output_buffer
+         */
+        void reset_new (OutputBuffer& output_buffer);
+
+        /**
+         * Initialize the parser. Return true if EOF was reached, false otherwise.
+         * @param input_buffer
+         * @param output_buffer
+         * @return bool
+         */
+        bool init (InputBuffer& input_buffer, OutputBuffer& output_buffer);
 
         /**
          * /// TODO: this description will need to change after adding it directly into the dictionary writer
          * Custom parsing for the log that builds up an uncompressed message and then compresses it all at once
-         * @param reader
+         * @param buffer
+         * @return int
          */
-        void parse (ReaderInterface& reader);
+        ParsingAction parse_new (InputBuffer& input_buffer, OutputBuffer& output_buffer);
 
-        /**
-         * Increment uncompressed message pos, considering swapping to a dynamic buffer (or doubling its size) when the current buffer size is reached
-         * @param reader
-         */
-        void increment_uncompressed_msg_pos (ReaderInterface& reader);
+        void flip_lexer_states() {
+            m_lexer.flip_states();
+        }
 
     private:
         /**
          * Request the next symbol from the lexer
          * @return Token
          */
-        Token get_next_symbol ();
+        Token get_next_symbol_new (InputBuffer& input_buffer);
 
         /**
          * Add delimiters (originally from the schema AST from the user defined schema) to the log parser
@@ -59,10 +81,8 @@ namespace compressor_frontend {
          */
         void add_rules (const std::unique_ptr<SchemaFileAST>& schema_ast);
 
-        Token* m_active_uncompressed_msg;
-        uint32_t m_uncompressed_msg_size;
-        Token m_static_uncompressed_msg[cStaticByteBuffSize];
-        uint32_t m_uncompressed_msg_pos = 0;
+        bool m_has_start_of_log_message;
+        Token m_start_of_log_message;
 
     };
 }

@@ -1,0 +1,5 @@
+123 123 MyDog123 APet4123\test.txt
+statictext123
+2016-05-08 07:34:05.253 123
+123.123 123 123
+Some Static Text Then MyDog123 APet4123\test.txt Then 123 then 123.123

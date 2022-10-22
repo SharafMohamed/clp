@@ -17,6 +17,7 @@
 #include "finite_automata/RegexAST.hpp"
 #include "finite_automata/RegexDFA.hpp"
 #include "finite_automata/RegexNFA.hpp"
+#include "InputBuffer.hpp"
 #include "Token.hpp"
 
 using compressor_frontend::finite_automata::RegexAST;
@@ -87,12 +88,22 @@ namespace compressor_frontend {
          * Generate DFA for a reverse lexer matching the reverse of the words in the original language
          */
         void generate_reverse ();
-
         /**
          * Reset the lexer to start a new lexing (reset buffers, reset vars tracking positions)
          * @param reader
          */
         void reset (ReaderInterface& reader);
+
+        /**
+         * Reset the lexer to start a new lexing (reset buffers, reset vars tracking positions)
+         * @param input_buffer
+         */
+        void reset_new ();
+
+        /**
+         * Flip lexer states to match static buffer flipping
+         */
+        void flip_states ();
 
         /**
          * After lexing half of the buffer, reads into that half of the buffer and changes variables accordingly
@@ -108,11 +119,27 @@ namespace compressor_frontend {
         Token scan ();
 
         /**
+         * Gets next token from the input string
+         * If next token is an uncaught string, the next variable token is already prepped to be returned on the next call
+         * @return Token
+         * @throw runtime_error("Input buffer about to overflow")
+         */
+        Token scan_new (InputBuffer& input_buffer);
+
+        /**
+         * scan(), but with wild wildcards in the input string (for search)
+         * @param wildcard
+         * @return Token
+         * @throw runtime_error("Input buffer about to overflow")
+         */
+        Token scan_with_wildcard (char wildcard);
+
+        /**
          * scan(), but with wild wildcards in the input string (for search)
          * @param wildcard
          * @return Token
          */
-        Token scan_with_wildcard (char wildcard);
+        Token scan_with_wildcard_new (InputBuffer& input_buffer, char wildcard);
 
         /**
          * Sets the position of where the last reduce was performed,
@@ -145,6 +172,12 @@ namespace compressor_frontend {
          * @return unsigned char
          */
         unsigned char get_next_character ();
+
+        /**
+         * Get next character from the input buffer
+         * @return unsigned char
+         */
+        unsigned char get_next_character_new (InputBuffer& input_buffer);
 
         /**
          * Return epsilon_closure over m_epsilon_transitions
@@ -186,6 +219,8 @@ namespace compressor_frontend {
         ReaderInterface* m_reader;
         bool m_has_delimiters;
         unique_ptr<RegexDFA<DFAStateType>> m_dfa;
+        bool m_asked_for_more_data;
+        DFAStateType* m_prev_state;
     };
 
     namespace lexers {

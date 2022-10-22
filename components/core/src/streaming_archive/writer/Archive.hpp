@@ -135,7 +135,7 @@ namespace streaming_archive { namespace writer {
          * @param has_timestamp
          * @throw FileWriter::OperationFailed if any write fails
          */
-        void write_msg_using_schema (compressor_frontend::Token*& uncompressed_msg, uint32_t uncompressed_msg_pos, bool has_delimiter, bool has_timestamp);
+        void write_msg_using_schema (compressor_frontend::Token* uncompressed_msg, uint32_t uncompressed_msg_pos, bool has_delimiter, bool has_timestamp);
 
         /**
          * Writes snapshot of archive to disk including metadata of all files and new dictionary entries

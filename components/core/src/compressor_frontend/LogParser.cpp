@@ -26,9 +26,6 @@ using std::vector;
 
 namespace compressor_frontend {
     LogParser::LogParser (const string& schema_file_path) {
-        m_active_uncompressed_msg = nullptr;
-        m_uncompressed_msg_size = 0;
-
         std::unique_ptr<compressor_frontend::SchemaFileAST> schema_ast = compressor_frontend::SchemaParser::try_schema_file(schema_file_path);
         add_delimiters(schema_ast->m_delimiters);
         add_rules(schema_ast);
@@ -113,106 +110,83 @@ namespace compressor_frontend {
     }
 
 
-    void LogParser::increment_uncompressed_msg_pos (ReaderInterface& reader) {
-        m_uncompressed_msg_pos++;
-        if (m_uncompressed_msg_pos == m_uncompressed_msg_size) {
-            string warn = "Very long line detected";
-            warn += " changing to dynamic uncompressed_msg and increasing size to ";
-            warn += to_string(m_uncompressed_msg_size * 2);
-            SPDLOG_WARN("warn");
-            if (m_active_uncompressed_msg == m_static_uncompressed_msg) {
-                m_active_uncompressed_msg = (Token*) malloc(m_uncompressed_msg_size * sizeof(Token));
-                memcpy(m_active_uncompressed_msg, m_static_uncompressed_msg, sizeof(m_static_uncompressed_msg));
-            }
-            m_uncompressed_msg_size *= 2;
-            m_active_uncompressed_msg = (Token*) realloc(m_active_uncompressed_msg, m_uncompressed_msg_size * sizeof(Token));
-            if (m_active_uncompressed_msg == nullptr) {
-                SPDLOG_ERROR("failed to allocate uncompressed msg of size {}", m_uncompressed_msg_size);
-                string err = "Lexer failed to find a match after checking entire buffer";
-                err += " in file " + dynamic_cast<FileReader&>(reader).get_path();
-                clp::close_file_and_append_to_segment(*m_archive_writer_ptr);
-                dynamic_cast<FileReader&>(reader).close();
-                throw (err); // error of this type will allow the program to continue running to compress other files
-            }
-        }
+    void LogParser::reset_new(OutputBuffer& output_buffer) {
+        m_lexer.reset_new();
+        output_buffer.set_has_delimiters(m_lexer.get_has_delimiters());
     }
 
-    void LogParser::parse (ReaderInterface& reader) {
-        m_uncompressed_msg_pos = 0;
-        if (m_active_uncompressed_msg != m_static_uncompressed_msg) {
-            free(m_active_uncompressed_msg);
+    /// TODO: if the first text is a variable in the no timestamp case you lose the first variable to static text since it has no leading delim
+    bool LogParser::init (InputBuffer& input_buffer, OutputBuffer& output_buffer) {
+        Token next_token = get_next_symbol_new(input_buffer);
+        output_buffer.set_value(0, next_token);
+        if (next_token.m_type_ids->at(0) == (int) SymbolID::TokenEndID) {
+            return true;
         }
-        m_uncompressed_msg_size = cStaticByteBuffSize;
-        m_active_uncompressed_msg = m_static_uncompressed_msg;
-        reset(reader);
-        m_parse_stack_states.push(root_itemset_ptr);
-        m_active_uncompressed_msg[0] = get_next_symbol();
-        bool has_timestamp = false;
-        if (m_active_uncompressed_msg[0].m_type_ids->at(0) == (int) SymbolID::TokenEndID) {
-            return;
-        }
-        if (m_active_uncompressed_msg[0].m_type_ids->at(0) == (int) SymbolID::TokenFirstTimestampId) {
-            has_timestamp = true;
-            increment_uncompressed_msg_pos(reader);
+        if (next_token.m_type_ids->at(0) == (int) SymbolID::TokenFirstTimestampId) {
+            output_buffer.set_has_timestamp(true);
+            output_buffer.set_curr_pos(1);
         } else {
-            has_timestamp = false;
-            m_archive_writer_ptr->change_ts_pattern(nullptr);
-            m_active_uncompressed_msg[1] = m_active_uncompressed_msg[0];
-            m_uncompressed_msg_pos = 2;
+            output_buffer.set_has_timestamp(false);
+            output_buffer.set_value(1, next_token);
+            output_buffer.set_curr_pos(2);
         }
+        m_has_start_of_log_message = false;
+        return false;
+    }
+
+    LogParser::ParsingAction LogParser::parse_new (InputBuffer& input_buffer, OutputBuffer& output_buffer) {
+        if (m_has_start_of_log_message) {
+            // switch to timestamped messages if a timestamp is ever found at the start of line (potentially dangerous as it never switches back)
+            /// TODO: potentially switch back if a new line is reached and the message is too long (100x static message size)
+            if (m_start_of_log_message.m_type_ids->at(0) == (int) SymbolID::TokenNewlineTimestampId) {
+                output_buffer.set_has_timestamp(true);
+            }
+            if (output_buffer.get_has_timestamp()) {
+                output_buffer.set_value(0, m_start_of_log_message);
+                output_buffer.set_curr_pos(1);
+            } else {
+                output_buffer.set_value(1, m_start_of_log_message);
+                output_buffer.set_curr_pos(2);
+            }
+            m_has_start_of_log_message = false;
+        }
+
         while (true) {
-            m_active_uncompressed_msg[m_uncompressed_msg_pos] = get_next_symbol();
-            int token_type = m_active_uncompressed_msg[m_uncompressed_msg_pos].m_type_ids->at(0);
-            if (token_type == (int) SymbolID::TokenEndID) {
-                m_archive_writer_ptr->write_msg_using_schema(m_active_uncompressed_msg, m_uncompressed_msg_pos,
-                                                             m_lexer.get_has_delimiters(), has_timestamp);
-                break;
-            }
-            bool found_start_of_next_message = (has_timestamp && token_type == (int) SymbolID::TokenNewlineTimestampId) ||
-                                               (!has_timestamp && m_active_uncompressed_msg[m_uncompressed_msg_pos].get_char(0) == '\n' &&
+            Token next_token = get_next_symbol_new(input_buffer);
+            output_buffer.set_curr_value(next_token);
+            int token_type = next_token.m_type_ids->at(0);
+            bool found_start_of_next_message = (output_buffer.get_has_timestamp() && token_type == (int) SymbolID::TokenNewlineTimestampId) ||
+                                               (!output_buffer.get_has_timestamp() && next_token.get_char(0) == '\n' &&
                                                 token_type != (int) SymbolID::TokenNewlineId);
-            bool found_end_of_current_message = !has_timestamp && token_type == (int) SymbolID::TokenNewlineId;
-            if (found_end_of_current_message) {
-                m_lexer.set_reduce_pos(m_active_uncompressed_msg[m_uncompressed_msg_pos].m_end_pos);
-                increment_uncompressed_msg_pos(reader);
-                m_archive_writer_ptr->write_msg_using_schema(m_active_uncompressed_msg, m_uncompressed_msg_pos,
-                                                             m_lexer.get_has_delimiters(), has_timestamp);
-                m_uncompressed_msg_pos = 0;
-                m_lexer.soft_reset(NonTerminal::m_next_children_start);
-            }
-            if (found_start_of_next_message) {
-                increment_uncompressed_msg_pos(reader);
-                m_active_uncompressed_msg[m_uncompressed_msg_pos] = m_active_uncompressed_msg[m_uncompressed_msg_pos - 1];
-                if (m_active_uncompressed_msg[m_uncompressed_msg_pos].m_start_pos == *m_active_uncompressed_msg[m_uncompressed_msg_pos].m_buffer_size_ptr - 1) {
-                    m_active_uncompressed_msg[m_uncompressed_msg_pos].m_start_pos = 0;
+            if (token_type == (int) SymbolID::TokenEndID) {
+                return ParsingAction::CompressAndFinish;
+            } else if (output_buffer.get_has_timestamp() == false && token_type == (int) SymbolID::TokenNewlineId) {
+                input_buffer.set_consumed_pos(output_buffer.get_curr_value().m_end_pos);
+                output_buffer.increment_pos();
+                return ParsingAction::Compress;
+            } else if (found_start_of_next_message) {
+                // increment by 1 because the '\n' character is not part of the next log message
+                m_start_of_log_message = output_buffer.get_curr_value();
+                if (m_start_of_log_message.m_start_pos == *m_start_of_log_message.m_buffer_size_ptr - 1) {
+                    m_start_of_log_message.m_start_pos = 0;
                 } else {
-                    m_active_uncompressed_msg[m_uncompressed_msg_pos].m_start_pos++;
+                    m_start_of_log_message.m_start_pos++;
                 }
-                m_active_uncompressed_msg[m_uncompressed_msg_pos - 1].m_end_pos =
-                        m_active_uncompressed_msg[m_uncompressed_msg_pos - 1].m_start_pos + 1;
-                m_active_uncompressed_msg[m_uncompressed_msg_pos - 1].m_type_ids = &Lexer<RegexNFAByteState, RegexDFAByteState>::cTokenUncaughtStringTypes;
-                m_lexer.set_reduce_pos(m_active_uncompressed_msg[m_uncompressed_msg_pos].m_start_pos - 1);
-                m_archive_writer_ptr->write_msg_using_schema(m_active_uncompressed_msg, m_uncompressed_msg_pos,
-                                                             m_lexer.get_has_delimiters(), has_timestamp);
-                // switch to timestamped messages if a timestamp is ever found at the start of line (potentially dangerous as it never switches back)
-                /// TODO: potentially switch back if a new line is reached and the message is too long (100x static message size)
-                if (token_type == (int) SymbolID::TokenNewlineTimestampId) {
-                    has_timestamp = true;
-                }
-                if (has_timestamp) {
-                    m_active_uncompressed_msg[0] = m_active_uncompressed_msg[m_uncompressed_msg_pos];
-                    m_uncompressed_msg_pos = 0;
-                } else {
-                    m_active_uncompressed_msg[1] = m_active_uncompressed_msg[m_uncompressed_msg_pos];
-                    m_uncompressed_msg_pos = 1;
-                }
-                m_lexer.soft_reset(NonTerminal::m_next_children_start);
+                // make the last token of the current message the '\n' character
+                Token curr_token = output_buffer.get_curr_value();
+                curr_token.m_end_pos = curr_token.m_start_pos + 1;
+                curr_token.m_type_ids = &Lexer<RegexNFAByteState, RegexDFAByteState>::cTokenUncaughtStringTypes;
+                output_buffer.set_curr_value(curr_token);
+                input_buffer.set_consumed_pos(m_start_of_log_message.m_start_pos - 1);
+                m_has_start_of_log_message = true;
+                output_buffer.increment_pos();
+                return ParsingAction::Compress;
             }
-            increment_uncompressed_msg_pos(reader);
+            output_buffer.increment_pos();
         }
     }
 
-    Token LogParser::get_next_symbol () {
-        return m_lexer.scan();
+    Token LogParser::get_next_symbol_new (InputBuffer& input_buffer) {
+        return m_lexer.scan_new(input_buffer);
     }
 }

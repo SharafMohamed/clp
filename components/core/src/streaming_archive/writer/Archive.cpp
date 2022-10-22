@@ -306,7 +306,7 @@ namespace streaming_archive::writer {
         }
     }
     
-    void Archive::write_msg_using_schema (compressor_frontend::Token*& uncompressed_msg, uint32_t uncompressed_msg_pos, const bool has_delimiter,
+    void Archive::write_msg_using_schema (compressor_frontend::Token* uncompressed_msg, uint32_t uncompressed_msg_pos, const bool has_delimiter,
                                           const bool has_timestamp) {
         epochtime_t timestamp = 0;
         TimestampPattern* timestamp_pattern = nullptr;

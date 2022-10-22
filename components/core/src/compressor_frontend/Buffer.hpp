@@ -8,33 +8,68 @@
 #include "Constants.hpp"
 
 namespace compressor_frontend {
+    template <typename type>
     class Buffer {
     public:
-        Buffer ();
+        // Prevent copying of buffer as this will be really slow
+        Buffer(Buffer&&) = delete;
+        Buffer& operator=(const Buffer&) = delete;
 
-        void switch_to_dynamic_buffer ();
-
-        char* get_active_buffer () {
-            return m_active_byte_buf;
+        Buffer () {
+            m_active_storage = m_static_storage;
+            m_curr_storage_size = cStaticByteBuffSize;
         }
 
-        [[nodiscard]] const bool needs_more_input () const {
-            return m_needs_more_input;
+        type* get_active_buffer () {
+            return m_active_storage;
         }
 
-    private:
+        type** get_active_buffer_addr () {
+            return m_active_storage_ptr;
+        }
+
+        [[nodiscard]] uint32_t get_curr_storage_size () const {
+            return m_curr_storage_size;
+        }
+
+        [[nodiscard]] uint32_t* get_curr_storage_size_addr () {
+            return m_curr_storage_size_ptr;
+        }
+
+        void set_curr_pos (uint32_t curr_pos) {
+            m_curr_pos = curr_pos;
+        }
+
+        [[nodiscard]] uint32_t get_curr_pos () const {
+            return m_curr_pos;
+        }
+
+        /**
+        * Reset a buffer to parse a new log message
+        */
+        virtual void reset () {
+            m_curr_pos = 0;
+            if (m_active_storage != m_static_storage) {
+                free(m_active_storage);
+            }
+            m_active_storage = m_static_storage;
+            m_static_storage_ptr = m_static_storage;
+            m_active_storage_ptr = &m_static_storage_ptr;
+            m_curr_storage_size = cStaticByteBuffSize;
+            m_static_storage_size = cStaticByteBuffSize;
+            m_curr_storage_size_ptr = &m_static_storage_size;
+        }
+
+    protected:
         // variables
-        uint32_t m_byte_buf_pos;
-        uint32_t m_fail_pos; /// TODO: rename to m_last_read-pos
-        uint32_t m_bytes_read;
-        bool m_finished_reading_file;
-        bool m_needs_more_input;
-        uint32_t m_current_buff_size;
-        char* m_active_byte_buf;
-        char** m_byte_buf_ptr;
-        const uint32_t* m_byte_buf_size_ptr;
-        char* m_static_byte_buf_ptr;
-        char m_static_byte_buf[cStaticByteBuffSize];
+        uint32_t m_curr_pos;
+        uint32_t m_curr_storage_size;
+        type* m_active_storage;
+        type m_static_storage[cStaticByteBuffSize];
+        type* m_static_storage_ptr;
+        uint32_t m_static_storage_size;
+        type** m_active_storage_ptr;
+        uint32_t* m_curr_storage_size_ptr;
     };
 }
 

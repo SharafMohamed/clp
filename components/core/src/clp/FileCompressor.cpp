@@ -12,9 +12,12 @@
 #include <archive_entry.h>
 
 // Project headers
+#include "../compressor_frontend/InputBuffer.hpp"
+#include "../compressor_frontend/OutputBuffer.hpp"
 #include "../Profiler.hpp"
 #include "utils.hpp"
 
+using compressor_frontend::LogParser;
 using std::cout;
 using std::endl;
 using std::set;
@@ -104,9 +107,9 @@ namespace clp {
                                                 file_to_compress.get_path_for_compression(),
                                                 file_to_compress.get_group_id(), archive_writer, m_file_reader);
             } else {
-                parse_and_encode(target_data_size_of_dicts, archive_user_config, target_encoded_file_size,
-                                 file_to_compress.get_path_for_compression(),
-                                 file_to_compress.get_group_id(), archive_writer, m_file_reader);
+                parse_and_encode_new(target_data_size_of_dicts, archive_user_config, target_encoded_file_size,
+                                     file_to_compress.get_path_for_compression(),
+                                     file_to_compress.get_group_id(), archive_writer, m_file_reader);
             }
         } else {
             if (false == try_compressing_as_archive(target_data_size_of_dicts, archive_user_config, target_encoded_file_size, file_to_compress,
@@ -125,9 +128,9 @@ namespace clp {
         return succeeded;
     }
 
-    void FileCompressor::parse_and_encode (size_t target_data_size_of_dicts, streaming_archive::writer::Archive::UserConfig& archive_user_config,
-                                           size_t target_encoded_file_size, const string& path_for_compression, group_id_t group_id,
-                                           streaming_archive::writer::Archive& archive_writer, ReaderInterface& reader)
+    void FileCompressor::parse_and_encode_new (size_t target_data_size_of_dicts, streaming_archive::writer::Archive::UserConfig& archive_user_config,
+                                               size_t target_encoded_file_size, const string& path_for_compression, group_id_t group_id,
+                                               streaming_archive::writer::Archive& archive_writer, ReaderInterface& reader)
     {
         archive_writer.m_target_data_size_of_dicts = target_data_size_of_dicts;
         archive_writer.m_archive_user_config = archive_user_config;
@@ -136,30 +139,121 @@ namespace clp {
         archive_writer.m_target_encoded_file_size = target_encoded_file_size;
         // Open compressed file
         archive_writer.create_and_open_file(path_for_compression, group_id, m_uuid_generator(), 0);
-        // TODO: decide what to actually do about this
-        // for now reset reader rather than try reading m_utf8_validation_buf as it would be
-        // very awkward to combine sources to/in the parser
+        /// TODO:Add the  m_utf8_validation_buf into the start of the input buffer
         reader.seek_from_begin(0);
         m_log_parser->set_archive_writer_ptr(&archive_writer);
         m_log_parser->get_archive_writer_ptr()->old_ts_pattern.clear();
         try {
-            m_log_parser->parse(reader);
-        } catch (std::string const err) {
-            if (err.find("Lexer failed to find a match after checking entire buffer") != std::string::npos) {
+            // Create buffers statically
+            /// TODO: create this and pass them in like m_log_parser to avoid re-initializing each time
+            static compressor_frontend::InputBuffer input_buffer;
+            static compressor_frontend::OutputBuffer output_buffer;
+            input_buffer.reset();
+            output_buffer.reset();
+
+            /// TODO: is there a way to read input_buffer without exposing the internal buffer of input_buffer to the caller or giving input_buffer the reader
+            // Read into input buffer
+            size_t bytes_read;
+            reader.read(input_buffer.get_active_buffer(), input_buffer.get_curr_storage_size() / 2, bytes_read);
+            input_buffer.initial_update_after_read(bytes_read);
+
+            // Initialize parser and lexer
+            m_log_parser->reset_new(output_buffer);
+            bool init_successful = false;
+            bool done;
+            while (init_successful == false) {
+                try {
+                    done = m_log_parser->init(input_buffer, output_buffer);
+                    init_successful = true;
+                } catch (std::runtime_error const& err) {
+                    if (string(err.what()) == "Input buffer about to overflow") {
+                        bool flipped_static_buffer = input_buffer.increase_size();
+                        if(flipped_static_buffer) {
+                            m_log_parser->flip_lexer_states();
+                        }
+                        reader.read(input_buffer.get_active_buffer(), input_buffer.get_curr_storage_size() / 2, bytes_read);
+                        input_buffer.update_after_read(bytes_read);
+                    } else {
+                       throw (err);
+                    }
+                    init_successful = false;
+                }
+            }
+            if (output_buffer.get_has_timestamp() == false) {
+                archive_writer.change_ts_pattern(nullptr);
+            }
+            LogParser::ParsingAction parsing_action = LogParser::ParsingAction::None;
+            while (!done && parsing_action != LogParser::ParsingAction::CompressAndFinish) {
+                // Parse until reading is needed
+                bool parse_successful = false;
+                while (parse_successful == false) {
+                    try {
+                        parsing_action = m_log_parser->parse_new(input_buffer, output_buffer);
+                        parse_successful = true;
+                    } catch (std::runtime_error const& err) {
+                        if (string(err.what()) == "Input buffer about to overflow") {
+                            bool flipped_static_buffer = input_buffer.increase_size();
+                            if(flipped_static_buffer) {
+                                m_log_parser->flip_lexer_states();
+                            }
+                            reader.read(input_buffer.get_active_buffer() + input_buffer.get_curr_pos(), input_buffer.get_curr_storage_size() / 2, bytes_read);
+                            input_buffer.update_after_read(bytes_read);
+                        }  else {
+                            throw (err);
+                        }
+                        parse_successful = false;
+                    }
+                }
+                switch (parsing_action) {
+                    case (LogParser::ParsingAction::NeedMoreInputData) : {
+                        // TODO: read into active_byte_buf
+
+                        break;
+                    }
+                    case (LogParser::ParsingAction::Compress) : {
+                        archive_writer.write_msg_using_schema(output_buffer.get_active_buffer(), output_buffer.get_curr_pos(),
+                                                              output_buffer.get_has_delimiters(), output_buffer.get_has_timestamp());
+                        bool read_needed = input_buffer.check_if_read_needed();
+                        if (read_needed) {
+                            uint32_t read_offset = input_buffer.get_read_offset();
+                            reader.read(input_buffer.get_active_buffer() + read_offset, input_buffer.get_curr_storage_size() / 2, bytes_read);
+                            input_buffer.update_after_read(bytes_read);
+                        }
+
+                        if(output_buffer.get_has_timestamp()) {
+                            output_buffer.set_curr_pos(0);
+                        } else {
+                            output_buffer.set_curr_pos(1);
+                        }
+                        break;
+                    }
+                    case (LogParser::ParsingAction::CompressAndFinish) : {
+                        archive_writer.write_msg_using_schema(output_buffer.get_active_buffer(), output_buffer.get_curr_pos(),
+                                                              output_buffer.get_has_delimiters(), output_buffer.get_has_timestamp());
+                        break;
+                    }
+                    default : {
+
+                    }
+                }
+            }
+
+        } catch (std::runtime_error const& err) {
+            if (string(err.what()).find("Lexer failed to find a match after checking entire buffer") != std::string::npos) {
                 close_file_and_append_to_segment(archive_writer);
-                SPDLOG_ERROR(err);
+                FileReader* file_reader = dynamic_cast<FileReader*>(&reader);
+                if(file_reader != nullptr) {
+                    string error_string = string(err.what()) + " in file " + file_reader->get_path();
+                    file_reader->close();
+                }
+                SPDLOG_ERROR(err.what());
             } else {
                 throw (err);
             }
         }
-        // TODO: separate variables from static text
-        //Stopwatch close_file_watch("close_file_watch");
-        //close_file_watch.start();
         close_file_and_append_to_segment(archive_writer);
         // archive_writer_config needs to persist between files
         archive_user_config = archive_writer.m_archive_user_config;
-        //close_file_watch.stop();
-        //close_file_watch.print();
     }
 
     void FileCompressor::parse_and_encode_with_heuristic (size_t target_data_size_of_dicts, streaming_archive::writer::Archive::UserConfig& archive_user_config,
@@ -279,8 +373,8 @@ namespace clp {
                                                     boost_path_for_compression.string(), file_to_compress.get_group_id(), archive_writer,
                                                     m_libarchive_file_reader);
                 } else {
-                    parse_and_encode(target_data_size_of_dicts, archive_user_config, target_encoded_file_size, boost_path_for_compression.string(),
-                                     file_to_compress.get_group_id(), archive_writer, m_libarchive_file_reader);
+                    parse_and_encode_new(target_data_size_of_dicts, archive_user_config, target_encoded_file_size, boost_path_for_compression.string(),
+                                         file_to_compress.get_group_id(), archive_writer, m_libarchive_file_reader);
                 }
             } else {
                 SPDLOG_ERROR("Cannot compress {} - not UTF-8 encoded.", m_libarchive_reader.get_path());
