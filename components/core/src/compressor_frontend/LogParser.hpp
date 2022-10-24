@@ -25,7 +25,6 @@ namespace compressor_frontend {
     public:
         enum class ParsingAction {
             None,
-            NeedMoreInputData,
             Compress,
             CompressAndFinish
         };

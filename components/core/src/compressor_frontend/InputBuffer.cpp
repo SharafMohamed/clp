@@ -89,6 +89,9 @@ namespace compressor_frontend {
             m_last_read_first_half_of_buf = !m_last_read_first_half_of_buf;
         }
         m_bytes_read += bytes_read;
+        if(m_bytes_read > m_curr_storage_size) {
+            m_bytes_read -= m_curr_storage_size;
+        }
         if (m_consumed_pos >= m_curr_storage_size / 2) {
             m_fail_pos = m_curr_storage_size / 2;
         } else {

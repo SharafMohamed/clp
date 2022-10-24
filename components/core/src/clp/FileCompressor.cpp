@@ -205,11 +205,6 @@ namespace clp {
                     }
                 }
                 switch (parsing_action) {
-                    case (LogParser::ParsingAction::NeedMoreInputData) : {
-                        // TODO: read into active_byte_buf
-
-                        break;
-                    }
                     case (LogParser::ParsingAction::Compress) : {
                         archive_writer.write_msg_using_schema(output_buffer.get_active_buffer(), output_buffer.get_curr_pos(),
                                                               output_buffer.get_has_delimiters(), output_buffer.get_has_timestamp());
