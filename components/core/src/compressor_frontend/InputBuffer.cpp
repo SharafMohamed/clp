@@ -46,27 +46,26 @@ namespace compressor_frontend {
         // Handle super long line for completeness, but efficiency doesn't matter
         if (m_active_storage == m_static_storage) {
             SPDLOG_WARN("Long line detected changing to dynamic input buffer and increasing size to {}.", m_curr_storage_size * 2);
-            m_active_storage = (char*) malloc(m_curr_storage_size * sizeof(char));
-            m_active_storage_ptr = &m_active_storage;
-            m_curr_storage_size_ptr = &m_curr_storage_size;
-            if (m_fail_pos == 0) {
-                memcpy(m_active_storage, m_static_storage, sizeof(m_static_storage));
-            } else {
-                /// TODO: make a test case for this scenario
-                memcpy(m_active_storage, m_static_storage + sizeof(m_static_storage) / 2, sizeof(m_static_storage) / 2);
-                memcpy(m_active_storage + sizeof(m_static_storage) / 2, m_static_storage, sizeof(m_static_storage) / 2);
-                flipped_static_buffer = true;
-            }
         } else {
             SPDLOG_WARN("Long line detected increasing dynamic input buffer size to {}.", m_curr_storage_size * 2);
         }
-        m_curr_storage_size *= 2;
-        m_active_storage = (char*) realloc(m_active_storage, m_curr_storage_size * sizeof(char));
-        if (m_active_storage == nullptr) {
+        m_dynamic_storages.emplace_back();
+        m_dynamic_storages.back() = (char*) malloc(2 * m_curr_storage_size * sizeof(char));
+        if (m_dynamic_storages.back() == nullptr) {
             SPDLOG_ERROR("Failed to allocate input buffer of size {}.", m_curr_storage_size);
             string err = "Lexer failed to find a match after checking entire buffer";
             throw std::runtime_error(err);
         }
+        if (m_fail_pos == 0) {
+            memcpy(m_dynamic_storages.back(), m_active_storage, m_curr_storage_size * sizeof(char));
+        } else {
+            /// TODO: make a test case for this scenario
+            memcpy(m_dynamic_storages.back(), m_active_storage + m_curr_storage_size * sizeof(char) / 2, m_curr_storage_size * sizeof(char) / 2);
+            memcpy(m_dynamic_storages.back() + m_curr_storage_size * sizeof(char) / 2, m_active_storage, m_curr_storage_size * sizeof(char) / 2);
+            flipped_static_buffer = true;
+        }
+        m_curr_storage_size *= 2;
+        m_active_storage = m_dynamic_storages.back();
         m_bytes_read = m_curr_storage_size / 2;
         m_curr_pos = m_curr_storage_size / 2;
         m_fail_pos = 0;

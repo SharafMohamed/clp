@@ -341,7 +341,7 @@ namespace streaming_archive::writer {
         if (start_pos <= end_pos) {
             num_uncompressed_bytes = end_pos - start_pos;
         } else {
-            num_uncompressed_bytes = *uncompressed_msg[0].m_buffer_size_ptr - start_pos + end_pos;
+            num_uncompressed_bytes = uncompressed_msg[0].m_buffer_size - start_pos + end_pos;
         }
         for (uint32_t i = 1; i < uncompressed_msg_pos; i++) {
             compressor_frontend::Token& token = uncompressed_msg[i];
@@ -349,7 +349,7 @@ namespace streaming_archive::writer {
             if (has_delimiter && token_type != (int) compressor_frontend::SymbolID::TokenUncaughtStringID &&
                 token_type != (int) compressor_frontend::SymbolID::TokenNewlineId) {
                 m_logtype_dict_entry.add_constant(token.get_delimiter(), 0, 1);
-                if (token.m_start_pos == *token.m_buffer_size_ptr - 1) {
+                if (token.m_start_pos == token.m_buffer_size - 1) {
                     token.m_start_pos = 0;
                 } else {
                     token.m_start_pos++;

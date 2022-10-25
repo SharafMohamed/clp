@@ -45,7 +45,7 @@ namespace compressor_frontend {
             if (m_last_read_first_half_of_buf) {
                 offset = m_current_buff_size / 2;
             }
-            m_reader->read(m_active_byte_buf + offset, m_current_buff_size / 2, m_bytes_read);
+            m_reader->read(m_static_byte_buf + offset, m_current_buff_size / 2, m_bytes_read);
 
             if (m_bytes_read < m_current_buff_size / 2) {
                 m_finished_reading_file = true;
@@ -66,7 +66,7 @@ namespace compressor_frontend {
             m_at_end_of_file = true;
             return utf8::cCharEOF;
         }
-        unsigned char character = m_active_byte_buf[m_byte_buf_pos];
+        unsigned char character = m_static_byte_buf[m_byte_buf_pos];
         m_byte_buf_pos++;
         if (m_byte_buf_pos == m_current_buff_size) {
             m_byte_buf_pos = 0;
@@ -80,7 +80,7 @@ namespace compressor_frontend {
             m_match = false;
             m_last_match_pos = m_match_pos;
             m_last_match_line = m_match_line;
-            return Token{m_start_pos, m_match_pos, m_byte_buf_ptr, m_byte_buf_size_ptr, m_match_line, m_type_ids};
+            return Token{m_start_pos, m_match_pos, m_static_byte_buf, m_current_buff_size, m_match_line, m_type_ids};
         }
         m_start_pos = m_byte_buf_pos;
         m_match_pos = m_byte_buf_pos;
@@ -89,58 +89,12 @@ namespace compressor_frontend {
         DFAStateType* state = m_dfa->get_root();
         while (true) {
             if (m_byte_buf_pos == m_fail_pos) {
-                string warn = "Long line detected";
-                warn += " at line " + to_string(m_line);
-                warn += " in file " + dynamic_cast<FileReader*>(m_reader)->get_path();
-                warn += " changing to dynamic buffer and increasing buffer size to ";
-                warn += to_string(m_current_buff_size * 2);
-                SPDLOG_WARN(warn);
-                // Found a super long line: for completeness handle this case, but efficiency doesn't matter
-                // 1. copy everything from old buffer into new buffer
-                if (m_active_byte_buf == m_static_byte_buf) {
-                    m_active_byte_buf = (char*) malloc(m_current_buff_size * sizeof(char));
-                    if (m_fail_pos == 0) {
-                        memcpy(m_active_byte_buf, m_static_byte_buf, sizeof(m_static_byte_buf));
-                    } else {
-                        /// TODO: make a test case for this scenario
-                        memcpy(m_active_byte_buf, m_static_byte_buf + sizeof(m_static_byte_buf) / 2, sizeof(m_static_byte_buf) / 2);
-                        memcpy(m_active_byte_buf + sizeof(m_static_byte_buf) / 2, m_static_byte_buf, sizeof(m_static_byte_buf) / 2);
-                        if (m_match_pos >= m_current_buff_size / 2) {
-                            m_match_pos -= m_current_buff_size / 2;
-                        } else {
-                            m_match_pos += m_current_buff_size / 2;
-                        }
-                        if (m_start_pos >= m_current_buff_size / 2) {
-                            m_start_pos -= m_current_buff_size / 2;
-                        } else {
-                            m_start_pos += m_current_buff_size / 2;
-                        }
-                        if (m_last_match_pos >= m_current_buff_size / 2) {
-                            m_last_match_pos -= m_current_buff_size / 2;
-                        } else {
-                            m_last_match_pos += m_current_buff_size / 2;
-                        }
-                    }
-                }
-                m_current_buff_size *= 2;
-                m_active_byte_buf = (char*) realloc(m_active_byte_buf, m_current_buff_size * sizeof(char));
-                m_byte_buf_ptr = &m_active_byte_buf;
-                m_byte_buf_size_ptr = &m_current_buff_size;
-                if (m_active_byte_buf == nullptr) {
-                    SPDLOG_ERROR("failed to allocate byte buffer of size {}", m_current_buff_size);
-                    string err = "Lexer failed to find a match after checking entire buffer";
-                    err += " at line " + to_string(m_line);
-                    err += " in file " + dynamic_cast<FileReader*>(m_reader)->get_path();
-                    dynamic_cast<FileReader*>(m_reader)->close();
-                    throw std::runtime_error (err);
-                }
-                m_reader->read(m_active_byte_buf + m_current_buff_size / 2, m_current_buff_size / 2, m_bytes_read);
-                m_bytes_read += m_current_buff_size / 2;
-                if (m_bytes_read < m_current_buff_size) {
-                    m_finished_reading_file = true;
-                }
-                m_byte_buf_pos = m_current_buff_size / 2;
-                m_fail_pos = 0;
+                SPDLOG_ERROR("Schema too long");
+                string err = "Lexer failed to find a match after checking entire buffer";
+                err += " at line " + to_string(m_line);
+                err += " in file " + dynamic_cast<FileReader*>(m_reader)->get_path();
+                dynamic_cast<FileReader*>(m_reader)->close();
+                throw std::runtime_error (err);
             }
             uint32_t prev_byte_buf_pos = m_byte_buf_pos;
             unsigned char next_char = get_next_character();
@@ -168,20 +122,20 @@ namespace compressor_frontend {
                     m_byte_buf_pos = m_match_pos;
                     m_line = m_match_line;
                     if (m_last_match_pos != m_start_pos) {
-                        return Token{m_last_match_pos, m_start_pos, m_byte_buf_ptr, m_byte_buf_size_ptr, m_last_match_line, &cTokenUncaughtStringTypes};
+                        return Token{m_last_match_pos, m_start_pos,  m_static_byte_buf, m_current_buff_size, m_last_match_line, &cTokenUncaughtStringTypes};
                     }
                     m_match = false;
                     m_last_match_pos = m_match_pos;
                     m_last_match_line = m_match_line;
-                    return Token{m_start_pos, m_match_pos, m_byte_buf_ptr, m_byte_buf_size_ptr, m_match_line, m_type_ids};
+                    return Token{m_start_pos, m_match_pos,  m_static_byte_buf, m_current_buff_size, m_match_line, m_type_ids};
                 } else if (m_at_end_of_file && m_start_pos == m_byte_buf_pos) {
                     if (m_last_match_pos != m_start_pos) {
                         m_match_pos = m_byte_buf_pos;
                         m_type_ids = &cTokenEndTypes;
                         m_match = true;
-                        return Token{m_last_match_pos, m_start_pos, m_byte_buf_ptr, m_byte_buf_size_ptr, m_last_match_line, &cTokenUncaughtStringTypes};
+                        return Token{m_last_match_pos, m_start_pos,  m_static_byte_buf, m_current_buff_size, m_last_match_line, &cTokenUncaughtStringTypes};
                     }
-                    return Token{m_byte_buf_pos, m_byte_buf_pos, m_byte_buf_ptr, m_byte_buf_size_ptr, m_line, &cTokenEndTypes};
+                    return Token{m_byte_buf_pos, m_byte_buf_pos,  m_static_byte_buf, m_current_buff_size, m_line, &cTokenEndTypes};
                 } else {
                     while (!m_at_end_of_file && !m_is_first_char[next_char]) {
                         prev_byte_buf_pos = m_byte_buf_pos;
@@ -204,7 +158,7 @@ namespace compressor_frontend {
             m_match = false;
             m_last_match_pos = m_match_pos;
             m_last_match_line = m_match_line;
-            return Token{m_start_pos, m_match_pos, m_byte_buf_ptr, m_byte_buf_size_ptr, m_match_line, m_type_ids};
+            return Token{m_start_pos, m_match_pos,  m_static_byte_buf, m_current_buff_size, m_match_line, m_type_ids};
         }
         m_start_pos = m_byte_buf_pos;
         m_match_pos = m_byte_buf_pos;
@@ -213,58 +167,12 @@ namespace compressor_frontend {
         DFAStateType* state = m_dfa->get_root();
         while (true) {
             if (m_byte_buf_pos == m_fail_pos) {
-                string warn = "Long line detected";
-                warn += " at line " + to_string(m_line);
-                warn += " in file " + dynamic_cast<FileReader*>(m_reader)->get_path();
-                warn += " changing to dynamic buffer and increasing buffer size to ";
-                warn += to_string(m_current_buff_size * 2);
-                SPDLOG_WARN(warn);
-                // Found a super long line: for completeness handle this case, but efficiency doesn't matter
-                // 1. copy everything from old buffer into new buffer
-                if (m_active_byte_buf == m_static_byte_buf) {
-                    m_active_byte_buf = (char*) malloc(m_current_buff_size * sizeof(char));
-                    if (m_fail_pos == 0) {
-                        memcpy(m_active_byte_buf, m_static_byte_buf, sizeof(m_static_byte_buf));
-                    } else {
-                        /// TODO: make a test case for this scenario
-                        memcpy(m_active_byte_buf, m_static_byte_buf + sizeof(m_static_byte_buf) / 2, sizeof(m_static_byte_buf) / 2);
-                        memcpy(m_active_byte_buf + sizeof(m_static_byte_buf) / 2, m_static_byte_buf, sizeof(m_static_byte_buf) / 2);
-                        if (m_match_pos >= m_current_buff_size / 2) {
-                            m_match_pos -= m_current_buff_size / 2;
-                        } else {
-                            m_match_pos += m_current_buff_size / 2;
-                        }
-                        if (m_start_pos >= m_current_buff_size / 2) {
-                            m_start_pos -= m_current_buff_size / 2;
-                        } else {
-                            m_start_pos += m_current_buff_size / 2;
-                        }
-                        if (m_last_match_pos >= m_current_buff_size / 2) {
-                            m_last_match_pos -= m_current_buff_size / 2;
-                        } else {
-                            m_last_match_pos += m_current_buff_size / 2;
-                        }
-                    }
-                }
-                m_current_buff_size *= 2;
-                m_active_byte_buf = (char*) realloc(m_active_byte_buf, m_current_buff_size * sizeof(char));
-                m_byte_buf_ptr = &m_active_byte_buf;
-                m_byte_buf_size_ptr = &m_current_buff_size;
-                if (m_active_byte_buf == nullptr) {
-                    SPDLOG_ERROR("failed to allocate byte buffer of size {}", m_current_buff_size);
-                    string err = "Lexer failed to find a match after checking entire buffer";
-                    err += " at line " + to_string(m_line);
-                    err += " in file " + dynamic_cast<FileReader*>(m_reader)->get_path();
-                    dynamic_cast<FileReader*>(m_reader)->close();
-                    throw (err); // this throw allows for continuation of compressing other files
-                }
-                m_reader->read(m_active_byte_buf + m_current_buff_size / 2, m_current_buff_size / 2, m_bytes_read);
-                m_bytes_read += m_current_buff_size / 2;
-                if (m_bytes_read < m_current_buff_size) {
-                    m_finished_reading_file = true;
-                }
-                m_byte_buf_pos = m_current_buff_size / 2;
-                m_fail_pos = 0;
+                SPDLOG_ERROR("Query too long");
+                string err = "Lexer failed to find a match after checking entire buffer";
+                err += " at line " + to_string(m_line);
+                err += " in file " + dynamic_cast<FileReader*>(m_reader)->get_path();
+                dynamic_cast<FileReader*>(m_reader)->close();
+                throw (err); // this throw allows for continuation of compressing other files
             }
             uint32_t prev_byte_buf_pos = m_byte_buf_pos;
             unsigned char next_char = get_next_character();
@@ -294,7 +202,7 @@ namespace compressor_frontend {
                 assert(m_at_end_of_file);
 
                 if (!m_match || (m_match && m_match_pos != m_byte_buf_pos)) {
-                    return Token{m_last_match_pos, m_byte_buf_pos, m_byte_buf_ptr, m_byte_buf_size_ptr, m_last_match_line, &cTokenUncaughtStringTypes};
+                    return Token{m_last_match_pos, m_byte_buf_pos, m_static_byte_buf, m_current_buff_size, m_last_match_line, &cTokenUncaughtStringTypes};
                 }
                 if (m_match) {
                     // BFS (keep track of m_type_ids)
@@ -302,7 +210,7 @@ namespace compressor_frontend {
                         for (uint32_t byte = 0; byte < cSizeOfByte; byte++) {
                             DFAStateType* next_state = state->next(byte);
                             if (next_state->is_accepting() == false) {
-                                return Token{m_last_match_pos, m_byte_buf_pos, m_byte_buf_ptr, m_byte_buf_size_ptr, m_last_match_line, &cTokenUncaughtStringTypes};
+                                return Token{m_last_match_pos, m_byte_buf_pos, m_static_byte_buf, m_current_buff_size, m_last_match_line, &cTokenUncaughtStringTypes};
                             }
                         }
                     } else if (wildcard == '*') {
@@ -312,7 +220,7 @@ namespace compressor_frontend {
                         while (!unvisited_states.empty()) {
                             DFAStateType* current_state = unvisited_states.top();
                             if (current_state == nullptr || current_state->is_accepting() == false) {
-                                return Token{m_last_match_pos, m_byte_buf_pos, m_byte_buf_ptr, m_byte_buf_size_ptr, m_last_match_line, &cTokenUncaughtStringTypes};
+                                return Token{m_last_match_pos, m_byte_buf_pos, m_static_byte_buf, m_current_buff_size, m_last_match_line, &cTokenUncaughtStringTypes};
                             }
                             unvisited_states.pop();
                             visited_states.insert(current_state);
@@ -332,7 +240,7 @@ namespace compressor_frontend {
                     m_match = false;
                     m_last_match_pos = m_match_pos;
                     m_last_match_line = m_match_line;
-                    return Token{m_start_pos, m_match_pos, m_byte_buf_ptr, m_byte_buf_size_ptr, m_match_line, m_type_ids};
+                    return Token{m_start_pos, m_match_pos, m_static_byte_buf, m_current_buff_size, m_match_line, m_type_ids};
                 }
             }
             state = next;
@@ -353,16 +261,8 @@ namespace compressor_frontend {
         m_line = 0;
         m_bytes_read = 0;
         m_last_read_first_half_of_buf = true;
-        if (m_active_byte_buf != nullptr && m_active_byte_buf != m_static_byte_buf) {
-            free(m_active_byte_buf);
-        }
-        m_static_byte_buf_ptr = m_static_byte_buf;
-        m_active_byte_buf = m_static_byte_buf;
         m_current_buff_size = cStaticByteBuffSize;
-        m_byte_buf_ptr = &m_static_byte_buf_ptr;
-        m_byte_buf_size_ptr = &cStaticByteBuffSize;
-
-        m_reader->read(m_active_byte_buf, m_current_buff_size / 2, m_bytes_read);
+        m_reader->read(m_static_byte_buf, m_current_buff_size / 2, m_bytes_read);
         if (m_bytes_read < m_current_buff_size / 2) {
             m_finished_reading_file = true;
         }
@@ -376,22 +276,22 @@ namespace compressor_frontend {
 
 
     template <typename NFAStateType, typename DFAStateType>
-    void Lexer<NFAStateType, DFAStateType>::flip_states () {
-        if (m_match_pos >= cStaticByteBuffSize / 2) {
-            m_match_pos -= cStaticByteBuffSize / 2;
+    void Lexer<NFAStateType, DFAStateType>::flip_states (uint32_t old_storage_size) {
+        if (m_match_pos >= old_storage_size / 2) {
+            m_match_pos -= old_storage_size / 2;
         } else {
-            m_match_pos += cStaticByteBuffSize / 2;
+            m_match_pos += old_storage_size / 2;
         }
-        /// TODO when m_start_pos == cStaticByteBuffSize / 2, theres two possible cases currently so both options are potentially wrong
-        if (m_start_pos > cStaticByteBuffSize / 2) {
-            m_start_pos -= cStaticByteBuffSize / 2;
+        /// TODO when m_start_pos == old_storage_size / 2, theres two possible cases currently so both options are potentially wrong
+        if (m_start_pos > old_storage_size / 2) {
+            m_start_pos -= old_storage_size / 2;
         } else {
-            m_start_pos += cStaticByteBuffSize / 2;
+            m_start_pos += old_storage_size / 2;
         }
-        if (m_last_match_pos >= cStaticByteBuffSize / 2) {
-            m_last_match_pos -= cStaticByteBuffSize / 2;
+        if (m_last_match_pos >= old_storage_size / 2) {
+            m_last_match_pos -= old_storage_size / 2;
         } else {
-            m_last_match_pos += cStaticByteBuffSize / 2;
+            m_last_match_pos += old_storage_size / 2;
         }
     }
 
@@ -406,7 +306,7 @@ namespace compressor_frontend {
                 m_match = false;
                 m_last_match_pos = m_match_pos;
                 m_last_match_line = m_match_line;
-                return Token{m_start_pos, m_match_pos, input_buffer.get_active_buffer_addr(), input_buffer.get_curr_storage_size_addr(), m_match_line,
+                return Token{m_start_pos, m_match_pos, input_buffer.get_active_buffer(), input_buffer.get_curr_storage_size(), m_match_line,
                              m_type_ids};
             }
             m_start_pos = input_buffer.get_curr_pos();
@@ -446,24 +346,24 @@ namespace compressor_frontend {
                     input_buffer.set_curr_pos(m_match_pos);
                     m_line = m_match_line;
                     if (m_last_match_pos != m_start_pos) {
-                        return Token{m_last_match_pos, m_start_pos, input_buffer.get_active_buffer_addr(), input_buffer.get_curr_storage_size_addr(),
+                        return Token{m_last_match_pos, m_start_pos, input_buffer.get_active_buffer(), input_buffer.get_curr_storage_size(),
                                      m_last_match_line, &cTokenUncaughtStringTypes};
                     }
                     m_match = false;
                     m_last_match_pos = m_match_pos;
                     m_last_match_line = m_match_line;
-                    return Token{m_start_pos, m_match_pos,  input_buffer.get_active_buffer_addr(), input_buffer.get_curr_storage_size_addr(),
+                    return Token{m_start_pos, m_match_pos,  input_buffer.get_active_buffer(), input_buffer.get_curr_storage_size(),
                                  m_match_line, m_type_ids};
                 } else if (input_buffer.get_at_end_of_file() && m_start_pos == input_buffer.get_curr_pos()) {
                     if (m_last_match_pos != m_start_pos) {
                         m_match_pos = input_buffer.get_curr_pos();
                         m_type_ids = &cTokenEndTypes;
                         m_match = true;
-                        return Token{m_last_match_pos, m_start_pos,  input_buffer.get_active_buffer_addr(), input_buffer.get_curr_storage_size_addr(),
+                        return Token{m_last_match_pos, m_start_pos,  input_buffer.get_active_buffer(), input_buffer.get_curr_storage_size(),
                                      m_last_match_line, &cTokenUncaughtStringTypes};
                     }
-                    return Token{input_buffer.get_curr_pos(), input_buffer.get_curr_pos(),  input_buffer.get_active_buffer_addr(),
-                                 input_buffer.get_curr_storage_size_addr(), m_line, &cTokenEndTypes};
+                    return Token{input_buffer.get_curr_pos(), input_buffer.get_curr_pos(),  input_buffer.get_active_buffer(),
+                                 input_buffer.get_curr_storage_size(), m_line, &cTokenEndTypes};
                 } else {
                     while (input_buffer.get_at_end_of_file() == false && m_is_first_char[next_char] == false) {
                         prev_byte_buf_pos = input_buffer.get_curr_pos();
@@ -491,7 +391,7 @@ namespace compressor_frontend {
                 m_match = false;
                 m_last_match_pos = m_match_pos;
                 m_last_match_line = m_match_line;
-                return Token{m_start_pos, m_match_pos, input_buffer.get_active_buffer_addr(), input_buffer.get_curr_storage_size_addr(), m_match_line,
+                return Token{m_start_pos, m_match_pos, input_buffer.get_active_buffer(), input_buffer.get_curr_storage_size(), m_match_line,
                              m_type_ids};
             }
             m_start_pos = input_buffer.get_curr_pos();
@@ -529,8 +429,8 @@ namespace compressor_frontend {
                 assert (input_buffer.get_at_end_of_file());
 
                 if (!m_match || (m_match && m_match_pos != input_buffer.get_curr_pos())) {
-                    return Token{m_last_match_pos, input_buffer.get_curr_pos(), input_buffer.get_active_buffer_addr(),
-                                 input_buffer.get_curr_storage_size_addr(), m_last_match_line, &cTokenUncaughtStringTypes};
+                    return Token{m_last_match_pos, input_buffer.get_curr_pos(), input_buffer.get_active_buffer(),
+                                 input_buffer.get_curr_storage_size(), m_last_match_line, &cTokenUncaughtStringTypes};
                 }
                 if (m_match) {
                     // BFS (keep track of m_type_ids)
@@ -538,8 +438,8 @@ namespace compressor_frontend {
                         for (uint32_t byte = 0; byte < cSizeOfByte; byte++) {
                             DFAStateType* next_state = state->next(byte);
                             if (next_state->is_accepting() == false) {
-                                return Token{m_last_match_pos, input_buffer.get_curr_pos(), input_buffer.get_active_buffer_addr(),
-                                             input_buffer.get_curr_storage_size_addr(), m_last_match_line, &cTokenUncaughtStringTypes};
+                                return Token{m_last_match_pos, input_buffer.get_curr_pos(), input_buffer.get_active_buffer(),
+                                             input_buffer.get_curr_storage_size(), m_last_match_line, &cTokenUncaughtStringTypes};
                             }
                         }
                     } else if (wildcard == '*') {
@@ -549,8 +449,8 @@ namespace compressor_frontend {
                         while (!unvisited_states.empty()) {
                             DFAStateType* current_state = unvisited_states.top();
                             if (current_state == nullptr || current_state->is_accepting() == false) {
-                                return Token{m_last_match_pos, input_buffer.get_curr_pos(), input_buffer.get_active_buffer_addr(),
-                                             input_buffer.get_curr_storage_size_addr(), m_last_match_line, &cTokenUncaughtStringTypes};
+                                return Token{m_last_match_pos, input_buffer.get_curr_pos(), input_buffer.get_active_buffer(),
+                                             input_buffer.get_curr_storage_size(), m_last_match_line, &cTokenUncaughtStringTypes};
                             }
                             unvisited_states.pop();
                             visited_states.insert(current_state);
@@ -570,7 +470,7 @@ namespace compressor_frontend {
                     m_match = false;
                     m_last_match_pos = m_match_pos;
                     m_last_match_line = m_match_line;
-                    return Token{m_start_pos, m_match_pos, input_buffer.get_active_buffer_addr(), input_buffer.get_curr_storage_size_addr(),
+                    return Token{m_start_pos, m_match_pos, input_buffer.get_active_buffer(), input_buffer.get_curr_storage_size(),
                                  m_match_line, m_type_ids};
                 }
             }

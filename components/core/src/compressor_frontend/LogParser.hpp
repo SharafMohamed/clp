@@ -54,8 +54,8 @@ namespace compressor_frontend {
          */
         ParsingAction parse_new (InputBuffer& input_buffer, OutputBuffer& output_buffer);
 
-        void flip_lexer_states() {
-            m_lexer.flip_states();
+        void flip_lexer_states(uint32_t old_storage_size) {
+            m_lexer.flip_states(old_storage_size);
         }
 
     private:

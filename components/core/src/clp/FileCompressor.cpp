@@ -167,9 +167,10 @@ namespace clp {
                     init_successful = true;
                 } catch (std::runtime_error const& err) {
                     if (string(err.what()) == "Input buffer about to overflow") {
+                        uint32_t old_storage_size = input_buffer.get_curr_storage_size();
                         bool flipped_static_buffer = input_buffer.increase_size();
                         if(flipped_static_buffer) {
-                            m_log_parser->flip_lexer_states();
+                            m_log_parser->flip_lexer_states(old_storage_size);
                         }
                         reader.read(input_buffer.get_active_buffer(), input_buffer.get_curr_storage_size() / 2, bytes_read);
                         input_buffer.update_after_read(bytes_read);
@@ -192,9 +193,10 @@ namespace clp {
                         parse_successful = true;
                     } catch (std::runtime_error const& err) {
                         if (string(err.what()) == "Input buffer about to overflow") {
+                            uint32_t old_storage_size = input_buffer.get_curr_storage_size();
                             bool flipped_static_buffer = input_buffer.increase_size();
                             if(flipped_static_buffer) {
-                                m_log_parser->flip_lexer_states();
+                                m_log_parser->flip_lexer_states(old_storage_size);
                             }
                             reader.read(input_buffer.get_active_buffer() + input_buffer.get_curr_pos(), input_buffer.get_curr_storage_size() / 2, bytes_read);
                             input_buffer.update_after_read(bytes_read);

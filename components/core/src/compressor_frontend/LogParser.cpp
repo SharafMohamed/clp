@@ -167,7 +167,7 @@ namespace compressor_frontend {
             } else if (found_start_of_next_message) {
                 // increment by 1 because the '\n' character is not part of the next log message
                 m_start_of_log_message = output_buffer.get_curr_value();
-                if (m_start_of_log_message.m_start_pos == *m_start_of_log_message.m_buffer_size_ptr - 1) {
+                if (m_start_of_log_message.m_start_pos == m_start_of_log_message.m_buffer_size - 1) {
                     m_start_of_log_message.m_start_pos = 0;
                 } else {
                     m_start_of_log_message.m_start_pos++;

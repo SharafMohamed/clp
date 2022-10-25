@@ -52,8 +52,7 @@ namespace compressor_frontend {
         // Constructor
         Lexer () : m_byte_buf_pos(0), m_bytes_read(0), m_line(0), m_fail_pos(0), m_reduce_pos(0), m_match(false), m_match_pos(0), m_start_pos(0),
                    m_match_line(0), m_last_match_pos(0), m_last_match_line(0), m_type_ids(), m_is_delimiter(), m_is_first_char(), m_static_byte_buf(),
-                   m_finished_reading_file(false), m_at_end_of_file(false), m_last_read_first_half_of_buf(false), m_reader(nullptr), m_has_delimiters(false),
-                   m_active_byte_buf(nullptr), m_byte_buf_ptr(nullptr), m_byte_buf_size_ptr(nullptr), m_static_byte_buf_ptr(nullptr) {
+                   m_finished_reading_file(false), m_at_end_of_file(false), m_last_read_first_half_of_buf(false), m_reader(nullptr), m_has_delimiters(false) {
             for (bool& i: m_is_first_char) {
                 i = false;
             }
@@ -103,7 +102,7 @@ namespace compressor_frontend {
         /**
          * Flip lexer states to match static buffer flipping
          */
-        void flip_states ();
+        void flip_states (uint32_t old_storage_size);
 
         /**
          * After lexing half of the buffer, reads into that half of the buffer and changes variables accordingly
@@ -204,10 +203,6 @@ namespace compressor_frontend {
         bool m_is_delimiter[cSizeOfByte];
         bool m_is_first_char[cSizeOfByte];
         static uint32_t m_current_buff_size;
-        char* m_active_byte_buf;
-        char** m_byte_buf_ptr;
-        const uint32_t* m_byte_buf_size_ptr;
-        char* m_static_byte_buf_ptr;
         char m_static_byte_buf[cStaticByteBuffSize];
         bool m_finished_reading_file;
         bool m_at_end_of_file;

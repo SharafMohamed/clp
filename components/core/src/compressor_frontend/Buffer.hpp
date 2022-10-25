@@ -3,6 +3,7 @@
 
 // C++ libraries
 #include <stdint.h>
+#include <vector>
 
 // Project Headers
 #include "Constants.hpp"
@@ -24,16 +25,8 @@ namespace compressor_frontend {
             return m_active_storage;
         }
 
-        type** get_active_buffer_addr () {
-            return m_active_storage_ptr;
-        }
-
         [[nodiscard]] uint32_t get_curr_storage_size () const {
             return m_curr_storage_size;
-        }
-
-        [[nodiscard]] uint32_t* get_curr_storage_size_addr () {
-            return m_curr_storage_size_ptr;
         }
 
         void set_curr_pos (uint32_t curr_pos) {
@@ -49,15 +42,12 @@ namespace compressor_frontend {
         */
         virtual void reset () {
             m_curr_pos = 0;
-            if (m_active_storage != m_static_storage) {
-                free(m_active_storage);
+            for (type* dynamic_storage : m_dynamic_storages) {
+                free(dynamic_storage);
             }
+            m_dynamic_storages.clear();
             m_active_storage = m_static_storage;
-            m_static_storage_ptr = m_static_storage;
-            m_active_storage_ptr = &m_static_storage_ptr;
             m_curr_storage_size = cStaticByteBuffSize;
-            m_static_storage_size = cStaticByteBuffSize;
-            m_curr_storage_size_ptr = &m_static_storage_size;
         }
 
     protected:
@@ -65,11 +55,8 @@ namespace compressor_frontend {
         uint32_t m_curr_pos;
         uint32_t m_curr_storage_size;
         type* m_active_storage;
+        std::vector<type*> m_dynamic_storages;
         type m_static_storage[cStaticByteBuffSize];
-        type* m_static_storage_ptr;
-        uint32_t m_static_storage_size;
-        type** m_active_storage_ptr;
-        uint32_t* m_curr_storage_size_ptr;
     };
 }
 
