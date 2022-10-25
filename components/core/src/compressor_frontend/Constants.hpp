@@ -38,6 +38,8 @@ namespace compressor_frontend {
         static const uint32_t cError = 0xFE;
         static const unsigned char cCharEOF = 0xFF;
     };
+
+    Stopwatch parse_stopwatch;
 }
 
 #endif // COMPRESSOR_FRONTEND_CONSTANTS_HPP

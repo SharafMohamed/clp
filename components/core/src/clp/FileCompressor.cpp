@@ -189,9 +189,12 @@ namespace clp {
                 bool parse_successful = false;
                 while (parse_successful == false) {
                     try {
+                        compressor_frontend::parse_stopwatch.start();
                         parsing_action = m_log_parser->parse_new(input_buffer, output_buffer);
+                        compressor_frontend::parse_stopwatch.stop();
                         parse_successful = true;
                     } catch (std::runtime_error const& err) {
+                        compressor_frontend::parse_stopwatch.stop();
                         if (string(err.what()) == "Input buffer about to overflow") {
                             uint32_t old_storage_size = input_buffer.get_curr_storage_size();
                             bool flipped_static_buffer = input_buffer.increase_size();

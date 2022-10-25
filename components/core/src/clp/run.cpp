@@ -119,7 +119,8 @@ namespace clp {
 
         Profiler::stop_continuous_measurement<Profiler::ContinuousMeasurementIndex::Compression>();
         LOG_CONTINUOUS_MEASUREMENT(Profiler::ContinuousMeasurementIndex::Compression)
-
+        compressor_frontend::parse_stopwatch.start();
+        SPDLOG_WARN("Total parse time: {} seconds", compressor_frontend::parse_stopwatch.get_time_taken_in_seconds());
         return 0;
     }
 }
