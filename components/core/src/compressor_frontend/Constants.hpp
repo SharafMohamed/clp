@@ -41,7 +41,7 @@ namespace compressor_frontend {
         static const unsigned char cCharEOF = 0xFF;
     };
 
-    static Stopwatch parse_stopwatch;
+    extern Stopwatch parse_stopwatch;
 }
 
 #endif // COMPRESSOR_FRONTEND_CONSTANTS_HPP

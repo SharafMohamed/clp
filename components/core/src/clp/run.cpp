@@ -16,6 +16,8 @@
 #include "decompression.hpp"
 #include "utils.hpp"
 
+Stopwatch compressor_frontend::parse_stopwatch;
+
 using clp::CommandLineArguments;
 using std::string;
 using std::unordered_set;

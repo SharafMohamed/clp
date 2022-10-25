@@ -17,6 +17,8 @@
 #include "../Profiler.hpp"
 #include "utils.hpp"
 
+extern Stopwatch parse_stopwatch;
+
 using compressor_frontend::LogParser;
 using std::cout;
 using std::endl;
