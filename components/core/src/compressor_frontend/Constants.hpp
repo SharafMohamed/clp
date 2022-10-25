@@ -4,6 +4,8 @@
 #include <cstdint>
 #include <utility>
 
+#include "../Stopwatch.hpp"
+
 namespace compressor_frontend {
 
     typedef std::pair<uint32_t, uint32_t> Interval;
@@ -39,7 +41,7 @@ namespace compressor_frontend {
         static const unsigned char cCharEOF = 0xFF;
     };
 
-    Stopwatch parse_stopwatch;
+    static Stopwatch parse_stopwatch;
 }
 
 #endif // COMPRESSOR_FRONTEND_CONSTANTS_HPP
