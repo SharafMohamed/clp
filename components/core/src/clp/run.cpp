@@ -17,6 +17,7 @@
 #include "utils.hpp"
 
 Stopwatch compressor_frontend::parse_stopwatch;
+uint32_t compressor_frontend::number_of_log_messages = 0;
 
 using clp::CommandLineArguments;
 using std::string;
@@ -121,8 +122,8 @@ namespace clp {
 
         Profiler::stop_continuous_measurement<Profiler::ContinuousMeasurementIndex::Compression>();
         LOG_CONTINUOUS_MEASUREMENT(Profiler::ContinuousMeasurementIndex::Compression)
-        compressor_frontend::parse_stopwatch.start();
         SPDLOG_WARN("Total parse time: {} seconds", compressor_frontend::parse_stopwatch.get_time_taken_in_seconds());
+        SPDLOG_WARN("Total number of logs: {} logs", compressor_frontend::number_of_log_messages);
         return 0;
     }
 }

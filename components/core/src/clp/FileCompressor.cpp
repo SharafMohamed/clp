@@ -18,6 +18,7 @@
 #include "utils.hpp"
 
 extern Stopwatch parse_stopwatch;
+extern uint32_t number_of_log_messages;
 
 using compressor_frontend::LogParser;
 using std::cout;
@@ -211,6 +212,7 @@ namespace clp {
                         parse_successful = false;
                     }
                 }
+                compressor_frontend::number_of_log_messages++;
                 switch (parsing_action) {
                     case (LogParser::ParsingAction::Compress) : {
                         archive_writer.write_msg_using_schema(output_buffer.get_active_buffer(), output_buffer.get_curr_pos(),

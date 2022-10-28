@@ -1,4 +1,6 @@
 2016-05-08 07:34:05.251 123 123 MyDog123 APet4123\test.txt
+same log more text
+same log even more text
 2016-05-08 07:34:05.252 statictext123
 2016-05-08 07:34:05.253 123
 2016-05-08 07:34:05.254 123.123 123 123

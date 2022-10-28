@@ -42,6 +42,7 @@ namespace compressor_frontend {
     };
 
     extern Stopwatch parse_stopwatch;
+    extern uint32_t number_of_log_messages;
 }
 
 #endif // COMPRESSOR_FRONTEND_CONSTANTS_HPP
