@@ -9,6 +9,11 @@
 #include <string>
 #include <vector>
 
+
+// RE2
+#include <re2/re2.h>
+#include <re2/set.h>
+
 // Project headers
 #include "../FileReader.hpp"
 #include "Constants.hpp"
@@ -377,6 +382,77 @@ namespace compressor_frontend {
             }
             state = next;
         }
+    }
+
+    template <typename NFAStateType, typename DFAStateType>
+    Token Lexer<NFAStateType, DFAStateType>::scan_re2 (InputBuffer& input_buffer) {
+        if(m_asked_for_more_data) {
+            m_asked_for_more_data = false;
+        } else {
+            m_start_pos = input_buffer.get_curr_pos();
+        }
+        bool found_delim = false;
+        // Get next delimiter
+        while(found_delim == false) {
+            if (input_buffer.about_to_overflow()) {
+                m_asked_for_more_data = true;
+                throw runtime_error("Input buffer about to overflow");
+            }
+            unsigned char next_char = input_buffer.get_next_character();
+            if (next_char == '\n') {
+                m_line++;
+            }
+            if(m_is_delimiter[next_char] && m_start_pos != input_buffer.get_pos_minus_one()) {
+                m_match_pos = input_buffer.get_pos_minus_one();
+                input_buffer.decrement_pos();
+                m_match_line = m_line++;
+                found_delim = true;
+            } else if (input_buffer.get_at_end_of_file()) {
+                m_match_pos = input_buffer.get_curr_pos();
+                m_match_line = m_line++;
+                found_delim = true;
+            }
+        }
+        if (input_buffer.get_at_end_of_file() && m_start_pos == input_buffer.get_curr_pos()) {
+            return Token{input_buffer.get_curr_pos(), input_buffer.get_curr_pos(),  input_buffer.get_active_buffer(), input_buffer.get_curr_storage_size(),
+                         m_line, &cTokenEndTypes};
+        }
+        Token token(m_start_pos, m_match_pos, input_buffer.get_active_buffer(), input_buffer.get_curr_storage_size(), m_match_line, m_type_ids);
+
+        // Builds DFA (move this to only be done once)
+        static bool done_once = false;
+        RE2::Options set_options;
+        RE2::Anchor set_anchor = RE2::Anchor::UNANCHORED;
+        static RE2::Set set(set_options, set_anchor);
+        static std::vector<std::vector<int>> type_ids_set;
+
+        if(done_once == false) {
+            type_ids_set.emplace_back(std::vector<int>{(int)m_symbol_id["timestamp"]});
+            set.Add(R"([0-9]{4}\-[0-9]{2}\-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]{3}){0,1})", nullptr);
+            type_ids_set.emplace_back(std::vector<int>{(int)m_symbol_id["timestamp"]});
+            set.Add(R"([0-9]{4}\-[0-9]{2}\-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}(,[0-9]{3}){0,1})", nullptr);
+            type_ids_set.emplace_back(std::vector<int>{(int)m_symbol_id["int"]});
+            set.Add(R"(\-{0,1}[0-9]+)", nullptr);
+            type_ids_set.emplace_back(std::vector<int>{(int)m_symbol_id["double"]});
+            set.Add(R"(\-{0,1}[0-9]+\.[0-9]+)", nullptr);
+            type_ids_set.emplace_back(std::vector<int>{(int)m_symbol_id["hex"]});
+            set.Add(R"([a-fA-F]+)", nullptr);
+            type_ids_set.emplace_back(std::vector<int>{(int)m_symbol_id["hasNumber"]});
+            set.Add(R"(.*\d.*)", nullptr);
+            type_ids_set.emplace_back(std::vector<int>{(int)m_symbol_id["equals"]});
+            set.Add(R"(.*=.*[a-zA-Z0-9].*)", nullptr);
+            set.Compile();
+            done_once = true;
+        }
+        // Use DFA
+        std::vector<int> match_ids;
+        set.Match(token.get_string(), &match_ids);
+        if(match_ids.empty()) {
+            token.m_type_ids = &cTokenUncaughtStringTypes;
+        } else {
+            token.m_type_ids = &type_ids_set[*std::min_element(std::begin(match_ids), std::end(match_ids))];
+        }
+        return token;
     }
 
     /// TODO: this is duplicating almost all the code of scan()

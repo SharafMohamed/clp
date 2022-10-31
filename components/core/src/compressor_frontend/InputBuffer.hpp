@@ -70,6 +70,16 @@ namespace compressor_frontend {
          */
         unsigned char get_next_character ();
 
+        /**
+         * Decrement buffer pos
+         */
+        void decrement_pos ();
+
+        /**
+         * Return pos minus one
+         * @return uint32_t
+         */
+        uint32_t get_pos_minus_one ();
     private:
         uint32_t m_bytes_read;
         bool m_finished_reading_file;

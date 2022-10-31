@@ -311,6 +311,7 @@ target_link_libraries(clp
         ${sqlite_LIBRARY_DEPENDENCIES}
         LibArchive::LibArchive
         MariaDBClient::MariaDBClient
+        re2
         stdc++fs
         yaml-cpp::yaml-cpp
         ZStd::ZStd

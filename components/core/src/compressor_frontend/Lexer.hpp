@@ -126,6 +126,14 @@ namespace compressor_frontend {
         Token scan_new (InputBuffer& input_buffer);
 
         /**
+         * Gets next token from the input string
+         * If next token is an uncaught string, the next variable token is already prepped to be returned on the next call
+         * @return Token
+         * @throw runtime_error("Input buffer about to overflow")
+         */
+        Token scan_re2 (InputBuffer& input_buffer);
+
+        /**
          * scan(), but with wild wildcards in the input string (for search)
          * @param wildcard
          * @return Token

@@ -110,4 +110,20 @@ namespace compressor_frontend {
         }
         return character;
     }
+
+    void InputBuffer::decrement_pos () {
+        if (m_curr_pos == 0) {
+            m_curr_pos = m_curr_storage_size - 1;
+        } else {
+            m_curr_pos--;
+        }
+    }
+
+    uint32_t InputBuffer::get_pos_minus_one () {
+        if (m_curr_pos == 0) {
+            return m_curr_storage_size - 1;
+        } else {
+            return m_curr_pos - 1;
+        }
+    }
 };

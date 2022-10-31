@@ -166,7 +166,7 @@ namespace clp {
             bool done;
             while (init_successful == false) {
                 try {
-                    done = m_log_parser->init(input_buffer, output_buffer);
+                    done = m_log_parser->init_re2(input_buffer, output_buffer);
                     init_successful = true;
                 } catch (std::runtime_error const& err) {
                     if (string(err.what()) == "Input buffer about to overflow") {
@@ -193,7 +193,7 @@ namespace clp {
                 while (parse_successful == false) {
                     try {
                         compressor_frontend::parse_stopwatch.start();
-                        parsing_action = m_log_parser->parse_new(input_buffer, output_buffer);
+                        parsing_action = m_log_parser->parse_re2(input_buffer, output_buffer);
                         compressor_frontend::parse_stopwatch.stop();
                         parse_successful = true;
                     } catch (std::runtime_error const& err) {

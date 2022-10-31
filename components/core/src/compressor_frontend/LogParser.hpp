@@ -47,12 +47,28 @@ namespace compressor_frontend {
         bool init (InputBuffer& input_buffer, OutputBuffer& output_buffer);
 
         /**
-         * /// TODO: this description will need to change after adding it directly into the dictionary writer
-         * Custom parsing for the log that builds up an uncompressed message and then compresses it all at once
-         * @param buffer
-         * @return int
+         * Initialize the parser. Return true if EOF was reached, false otherwise.
+         * @param input_buffer
+         * @param output_buffer
+         * @return bool
+         */
+        bool init_re2 (InputBuffer& input_buffer, OutputBuffer& output_buffer);
+
+        /**
+         * Custom parsing for the log that takes in an input char buffer and returns the next uncompressed log message
+         * @param input_buffer
+         * @param output_buffer
+         * @return ParsingAction
          */
         ParsingAction parse_new (InputBuffer& input_buffer, OutputBuffer& output_buffer);
+
+        /**
+         * Custom parsing for the log that takes in an input char buffer and returns the next uncompressed log message (using RE2)
+         * @param input_buffer
+         * @param output_buffer
+         * @return ParsingAction
+         */
+        ParsingAction parse_re2 (InputBuffer& input_buffer, OutputBuffer& output_buffer);
 
         void flip_lexer_states(uint32_t old_storage_size) {
             m_lexer.flip_states(old_storage_size);
@@ -64,6 +80,12 @@ namespace compressor_frontend {
          * @return Token
          */
         Token get_next_symbol_new (InputBuffer& input_buffer);
+
+        /**
+         * Request the next symbol from the lexer
+         * @return Token
+         */
+        Token get_next_symbol_re2 (InputBuffer& input_buffer);
 
         /**
          * Add delimiters (originally from the schema AST from the user defined schema) to the log parser
