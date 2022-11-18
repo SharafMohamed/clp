@@ -28,4 +28,16 @@ namespace compressor_frontend {
             return m_buffer_size - m_start_pos + m_end_pos;
         }
     }
+
+    //re2 stuff
+    re2::StringPiece Token::get_re2_string () const {
+        if (m_start_pos < m_end_pos) {
+            return {m_buffer + m_start_pos + 1, m_end_pos - m_start_pos - 1};
+        } else if (m_start_pos > m_end_pos) {
+            return string(m_buffer + m_start_pos + 1, m_buffer + m_buffer_size) +
+                   string(m_buffer, m_buffer + m_end_pos);
+        } else {
+            return "";
+        }
+    }
 }

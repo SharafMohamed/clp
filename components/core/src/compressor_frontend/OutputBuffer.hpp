@@ -9,6 +9,11 @@ namespace compressor_frontend {
 
     class OutputBuffer : public Buffer<Token> {
     public:
+        /**
+         * Resets output buffer
+         * @return
+         */
+        void reset () override;
 
         /**
          * Increment buffer pos, swaps to a dynamic buffer (or doubles its size) if needed

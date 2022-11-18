@@ -3,6 +3,7 @@
 
 // C++ standard libraries
 #include <string>
+#include <re2/stringpiece.h>
 #include <vector>
 
 namespace compressor_frontend {
@@ -39,6 +40,12 @@ namespace compressor_frontend {
          * @return uint32_t
          */
         [[nodiscard]] uint32_t get_length () const;
+
+        /**
+         * Return the token string (string in the input buffer that the token represents)
+         * @return std::string
+         */
+        [[nodiscard]] re2::StringPiece get_re2_string () const;
 
         uint32_t m_start_pos;
         uint32_t m_end_pos;

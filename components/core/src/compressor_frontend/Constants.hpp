@@ -41,7 +41,11 @@ namespace compressor_frontend {
         static const unsigned char cCharEOF = 0xFF;
     };
 
-    extern Stopwatch parse_stopwatch;
+    extern Stopwatch re2_parse_stopwatch;
+    extern Stopwatch structured_re2_parse_stopwatch;
+    extern Stopwatch new_parse_stopwatch;
+    extern Stopwatch no_token_new_parse_stopwatch;
+
     extern uint32_t number_of_log_messages;
 }
 

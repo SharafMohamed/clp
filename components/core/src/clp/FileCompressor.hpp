@@ -45,6 +45,28 @@ namespace clp {
         // Methods
         /**
          * Parses and encodes content from the given reader into the given archive_writer
+         * @param input_buffer
+         * @param output_buffer
+         * @param reader
+         */
+        void parse (ReaderInterface& reader, int parser_id);
+
+        /**
+         * Parses and encodes content from the given reader into the given archive_writer
+         * @param target_data_size_of_dicts
+         * @param archive_user_config
+         * @param target_encoded_file_size
+         * @param path_for_compression
+         * @param group_id
+         * @param archive_writer
+         * @param reader
+         */
+        void parse_and_encode_experiment (size_t target_data_size_of_dicts, streaming_archive::writer::Archive::UserConfig& archive_user_config,
+                                          size_t target_encoded_file_size, const std::string& path_for_compression, group_id_t group_id,
+                                          streaming_archive::writer::Archive& archive_writer, ReaderInterface& reader);
+
+        /**
+         * Parses and encodes content from the given reader into the given archive_writer
          * @param target_data_size_of_dicts
          * @param archive_user_config
          * @param target_encoded_file_size

@@ -371,6 +371,90 @@ namespace compressor_frontend {
                                  input_buffer.get_curr_storage_size(), m_line, &cTokenEndTypes};
                 } else {
                     while (input_buffer.get_at_end_of_file() == false && m_is_first_char[next_char] == false) {
+                        if (input_buffer.about_to_overflow()) {
+                            m_asked_for_more_data = true;
+                            m_prev_state = state;
+                            throw runtime_error("Input buffer about to overflow");
+                        }
+                        prev_byte_buf_pos = input_buffer.get_curr_pos();
+                        next_char = input_buffer.get_next_character();
+                    }
+                    input_buffer.set_curr_pos(prev_byte_buf_pos);
+                    m_start_pos = prev_byte_buf_pos;
+                    state = m_dfa->get_root();
+                    continue;
+                }
+            }
+            state = next;
+        }
+    }
+
+    template <typename NFAStateType, typename DFAStateType>
+    typename Lexer<NFAStateType, DFAStateType>::ParsingAction Lexer<NFAStateType, DFAStateType>::scan_new_no_token (InputBuffer& input_buffer) {
+        DFAStateType* state = m_dfa->get_root();
+        if (m_asked_for_more_data) {
+            state = m_prev_state;
+            m_asked_for_more_data = false;
+        } else {
+            if (m_match) {
+                m_match = false;
+                m_last_match_pos = m_match_pos;
+                return ParsingAction::None;
+            }
+            m_start_pos = input_buffer.get_curr_pos();
+            m_match_pos = input_buffer.get_curr_pos();
+            m_type_ids = nullptr;
+        }
+        while (true) {
+            if (input_buffer.about_to_overflow()) {
+                m_asked_for_more_data = true;
+                m_prev_state = state;
+                throw runtime_error("Input buffer about to overflow");
+            }
+            uint32_t prev_byte_buf_pos = input_buffer.get_curr_pos();
+            unsigned char next_char = input_buffer.get_next_character();
+            if ((m_is_delimiter[next_char] || input_buffer.get_at_end_of_file() || !m_has_delimiters) && state->is_accepting()) {
+                m_match = true;
+                m_type_ids = &(state->get_tags());
+                m_match_pos = prev_byte_buf_pos;
+            }
+            DFAStateType* next = state->next(next_char);
+            if (next_char == '\n') {
+                if (m_has_delimiters && !m_match) {
+                    next = m_dfa->get_root()->next(next_char);
+                    m_match = true;
+                    m_type_ids = &(next->get_tags());
+                    m_start_pos = prev_byte_buf_pos;
+                    m_match_pos = input_buffer.get_curr_pos();
+                }
+                return ParsingAction::Compress;
+            }
+            if (input_buffer.get_at_end_of_file() || next == nullptr) {
+                if (m_match) {
+                    input_buffer.set_at_end_of_file(false);
+                    input_buffer.set_curr_pos(m_match_pos);
+                    if (m_last_match_pos != m_start_pos) {
+                        return ParsingAction::None;
+                    }
+                    m_match = false;
+                    m_last_match_pos = m_match_pos;
+                    return ParsingAction::None;
+                } else if (input_buffer.get_at_end_of_file() && m_start_pos == input_buffer.get_curr_pos()) {
+                    if (m_last_match_pos != m_start_pos) {
+                        m_match_pos = input_buffer.get_curr_pos();
+                        m_type_ids = &cTokenEndTypes;
+                        m_match = true;
+                        return ParsingAction::CompressAndFinish;
+                    }
+
+                    return ParsingAction::CompressAndFinish;
+                } else {
+                    while (input_buffer.get_at_end_of_file() == false && m_is_first_char[next_char] == false) {
+                        if (input_buffer.about_to_overflow()) {
+                            m_asked_for_more_data = true;
+                            m_prev_state = state;
+                            throw runtime_error("Input buffer about to overflow");
+                        }
                         prev_byte_buf_pos = input_buffer.get_curr_pos();
                         next_char = input_buffer.get_next_character();
                     }
@@ -389,11 +473,10 @@ namespace compressor_frontend {
         if(m_asked_for_more_data) {
             m_asked_for_more_data = false;
         } else {
-            m_start_pos = input_buffer.get_curr_pos();
+            m_start_pos = m_match_pos;
         }
-        bool found_delim = false;
         // Get next delimiter
-        while(found_delim == false) {
+        while (true) {
             if (input_buffer.about_to_overflow()) {
                 m_asked_for_more_data = true;
                 throw runtime_error("Input buffer about to overflow");
@@ -402,15 +485,14 @@ namespace compressor_frontend {
             if (next_char == '\n') {
                 m_line++;
             }
-            if(m_is_delimiter[next_char] && m_start_pos != input_buffer.get_pos_minus_one()) {
+            if (m_is_delimiter[next_char]) {
                 m_match_pos = input_buffer.get_pos_minus_one();
-                input_buffer.decrement_pos();
                 m_match_line = m_line++;
-                found_delim = true;
+                break;
             } else if (input_buffer.get_at_end_of_file()) {
                 m_match_pos = input_buffer.get_curr_pos();
                 m_match_line = m_line++;
-                found_delim = true;
+                break;
             }
         }
         if (input_buffer.get_at_end_of_file() && m_start_pos == input_buffer.get_curr_pos()) {
@@ -419,40 +501,77 @@ namespace compressor_frontend {
         }
         Token token(m_start_pos, m_match_pos, input_buffer.get_active_buffer(), input_buffer.get_curr_storage_size(), m_match_line, m_type_ids);
 
-        // Builds DFA (move this to only be done once)
-        static bool done_once = false;
-        RE2::Options set_options;
-        RE2::Anchor set_anchor = RE2::Anchor::UNANCHORED;
-        static RE2::Set set(set_options, set_anchor);
-        static std::vector<std::vector<int>> type_ids_set;
-
-        if(done_once == false) {
-            type_ids_set.emplace_back(std::vector<int>{(int)m_symbol_id["timestamp"]});
-            set.Add(R"([0-9]{4}\-[0-9]{2}\-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]{3}){0,1})", nullptr);
-            type_ids_set.emplace_back(std::vector<int>{(int)m_symbol_id["timestamp"]});
-            set.Add(R"([0-9]{4}\-[0-9]{2}\-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}(,[0-9]{3}){0,1})", nullptr);
-            type_ids_set.emplace_back(std::vector<int>{(int)m_symbol_id["int"]});
-            set.Add(R"(\-{0,1}[0-9]+)", nullptr);
-            type_ids_set.emplace_back(std::vector<int>{(int)m_symbol_id["double"]});
-            set.Add(R"(\-{0,1}[0-9]+\.[0-9]+)", nullptr);
-            type_ids_set.emplace_back(std::vector<int>{(int)m_symbol_id["hex"]});
-            set.Add(R"([a-fA-F]+)", nullptr);
-            type_ids_set.emplace_back(std::vector<int>{(int)m_symbol_id["hasNumber"]});
-            set.Add(R"(.*\d.*)", nullptr);
-            type_ids_set.emplace_back(std::vector<int>{(int)m_symbol_id["equals"]});
-            set.Add(R"(.*=.*[a-zA-Z0-9].*)", nullptr);
-            set.Compile();
-            done_once = true;
-        }
         // Use DFA
         std::vector<int> match_ids;
-        set.Match(token.get_string(), &match_ids);
+        m_re2_set.Match(token.get_re2_string(), &match_ids);
         if(match_ids.empty()) {
             token.m_type_ids = &cTokenUncaughtStringTypes;
         } else {
-            token.m_type_ids = &type_ids_set[*std::min_element(std::begin(match_ids), std::end(match_ids))];
+            token.m_type_ids = &m_re2_type_ids_set[*std::min_element(std::begin(match_ids), std::end(match_ids))];
         }
         return token;
+    }
+
+    template <typename NFAStateType, typename DFAStateType>
+    Token Lexer<NFAStateType, DFAStateType>::scan_untyped_token (InputBuffer& input_buffer) {
+        if(m_asked_for_more_data) {
+            m_asked_for_more_data = false;
+        } else {
+            m_start_pos = m_match_pos;
+        }
+        // Get next delimiter
+        while (true) {
+            if (input_buffer.about_to_overflow()) {
+                m_asked_for_more_data = true;
+                throw runtime_error("Input buffer about to overflow");
+            }
+            unsigned char next_char = input_buffer.get_next_character();
+            if (next_char == '\n') {
+                m_line++;
+            }
+            if (m_is_delimiter[next_char]) {
+                m_match_pos = input_buffer.get_pos_minus_one();
+                m_match_line = m_line;
+                break;
+            } else if (input_buffer.get_at_end_of_file()) {
+                m_match_pos = input_buffer.get_curr_pos();
+                m_match_line = m_line;
+                break;
+            }
+        }
+        if (input_buffer.get_at_end_of_file() && m_start_pos == input_buffer.get_curr_pos()) {
+            return Token{input_buffer.get_curr_pos(), input_buffer.get_curr_pos(),  input_buffer.get_active_buffer(), input_buffer.get_curr_storage_size(),
+                         m_line, &cTokenEndTypes};
+        }
+        m_type_ids = &cTokenUncaughtStringTypes;
+        Token token(m_start_pos, m_match_pos, input_buffer.get_active_buffer(), input_buffer.get_curr_storage_size(), m_match_line, m_type_ids);
+        return token;
+    }
+    template <typename NFAStateType, typename DFAStateType>
+    re2::StringPiece Lexer<NFAStateType, DFAStateType>::get_next_line (InputBuffer& input_buffer) {
+        if(m_asked_for_more_data) {
+            m_asked_for_more_data = false;
+        } else {
+            m_start_pos = m_match_pos;
+        }
+        // Get next newline character
+        while (true) {
+            if (input_buffer.about_to_overflow()) {
+                m_asked_for_more_data = true;
+                throw runtime_error("Input buffer about to overflow");
+            }
+            unsigned char next_char = input_buffer.get_next_character();
+            if (next_char == '\n' || input_buffer.get_at_end_of_file()) {
+                m_match_pos = input_buffer.get_curr_pos();
+                m_match_line++;
+                if(m_start_pos > m_match_pos) {
+                    return std::string(input_buffer.get_active_buffer() + m_start_pos, input_buffer.get_curr_storage_size() - m_start_pos) +
+                           std::string(input_buffer.get_active_buffer(), m_match_pos);
+                } else {
+                    return {input_buffer.get_active_buffer() + m_start_pos, m_match_pos - m_start_pos};
+                }
+            }
+        }
     }
 
     /// TODO: this is duplicating almost all the code of scan()
@@ -611,6 +730,34 @@ namespace compressor_frontend {
                 m_is_first_char[i] = false;
             }
         }
+
+        // re2 stuff
+        if(m_symbol_id.count("hasNumber")) {
+            m_re2_type_ids_set.emplace_back(std::vector<int>{(int)m_symbol_id["timestamp"]});
+            m_re2_set.Add(R"([0-9]{4}\-[0-9]{2}\-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]{3}){0,1})", nullptr);
+            m_re2_type_ids_set.emplace_back(std::vector<int>{(int)m_symbol_id["timestamp"]});
+            m_re2_set.Add(R"([0-9]{4}\-[0-9]{2}\-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}(,[0-9]{3}){0,1})", nullptr);
+            m_re2_type_ids_set.emplace_back(std::vector<int>{(int)m_symbol_id["int"]});
+            m_re2_set.Add(R"(\-{0,1}[0-9]+)", nullptr);
+            m_re2_type_ids_set.emplace_back(std::vector<int>{(int)m_symbol_id["double"]});
+            m_re2_set.Add(R"(\-{0,1}[0-9]+\.[0-9]+)", nullptr);
+            m_re2_type_ids_set.emplace_back(std::vector<int>{(int)m_symbol_id["hex"]});
+            m_re2_set.Add(R"([a-fA-F]+)", nullptr);
+            m_re2_type_ids_set.emplace_back(std::vector<int>{(int)m_symbol_id["hasNumber"]});
+            m_re2_set.Add(R"([^ \t\r\n:,!;%]*\d[^ \t\r\n:,!;%]*)", nullptr);
+            m_re2_type_ids_set.emplace_back(std::vector<int>{(int)m_symbol_id["equals"]});
+            m_re2_set.Add(R"([^ \t\r\n:,!;%]*=[^ \t\r\n:,!;%]*[a-zA-Z0-9][^ \t\r\n:,!;%]*)", nullptr);
+            m_re2_type_ids_set.emplace_back(std::vector<int>{(int)m_symbol_id["verbosity"]});
+            m_re2_set.Add(R"((INFO)|(DEBUG)|(WARN)|(ERROR)|(TRACE)|(FATAL))", nullptr);
+            m_re2_set.Compile();
+        } else {
+            m_re2_type_ids_set.emplace_back(std::vector<int>{(int)m_symbol_id["timestamp"]});
+            m_re2_set.Add(R"([0-9]{4}\-[0-9]{2}\-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2},[0-9]{3})", nullptr);
+            m_re2_type_ids_set.emplace_back(std::vector<int>{(int)m_symbol_id["verbosity"]});
+            m_re2_set.Add(R"((INFO)|(DEBUG)|(WARN)|(ERROR)|(TRACE)|(FATAL))", nullptr);
+            m_re2_set.Compile();
+        }
+
     }
 
     template <typename NFAStateType, typename DFAStateType>

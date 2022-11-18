@@ -21,6 +21,16 @@ namespace compressor_frontend {
             m_curr_storage_size = cStaticByteBuffSize;
         }
 
+        ~Buffer() {
+            m_curr_pos = 0;
+            for (type* dynamic_storage : m_dynamic_storages) {
+                free(dynamic_storage);
+            }
+            m_dynamic_storages.clear();
+            m_active_storage = m_static_storage;
+            m_curr_storage_size = cStaticByteBuffSize;
+        }
+
         type* get_active_buffer () {
             return m_active_storage;
         }

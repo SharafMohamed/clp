@@ -16,7 +16,11 @@
 #include "decompression.hpp"
 #include "utils.hpp"
 
-Stopwatch compressor_frontend::parse_stopwatch;
+Stopwatch compressor_frontend::re2_parse_stopwatch;
+Stopwatch compressor_frontend::structured_re2_parse_stopwatch;
+Stopwatch compressor_frontend::new_parse_stopwatch;
+Stopwatch compressor_frontend::no_token_new_parse_stopwatch;
+
 uint32_t compressor_frontend::number_of_log_messages = 0;
 
 using clp::CommandLineArguments;
@@ -66,7 +70,9 @@ namespace clp {
             std::unique_ptr<compressor_frontend::LogParser> log_parser;
             if (!command_line_args.get_use_heuristic()) {
                 const std::string& schema_file_path = command_line_args.get_schema_file_path();
-                log_parser = std::make_unique<compressor_frontend::LogParser>(schema_file_path);
+                RE2::Options options;
+                options.set_longest_match(true);
+                log_parser = std::make_unique<compressor_frontend::LogParser>(schema_file_path, options);
             }
 
             boost::filesystem::path path_prefix_to_remove(command_line_args.get_path_prefix_to_remove());
@@ -122,7 +128,10 @@ namespace clp {
 
         Profiler::stop_continuous_measurement<Profiler::ContinuousMeasurementIndex::Compression>();
         LOG_CONTINUOUS_MEASUREMENT(Profiler::ContinuousMeasurementIndex::Compression)
-        SPDLOG_WARN("Total parse time: {} seconds", compressor_frontend::parse_stopwatch.get_time_taken_in_seconds());
+        SPDLOG_WARN("Total re2 parse time: {} seconds", compressor_frontend::re2_parse_stopwatch.get_time_taken_in_seconds());
+        SPDLOG_WARN("Total structured re2 parse time: {} seconds", compressor_frontend::structured_re2_parse_stopwatch.get_time_taken_in_seconds());
+        SPDLOG_WARN("Total new parse time: {} seconds", compressor_frontend::new_parse_stopwatch.get_time_taken_in_seconds());
+        SPDLOG_WARN("Total no token new parse time: {} seconds", compressor_frontend::no_token_new_parse_stopwatch.get_time_taken_in_seconds());
         SPDLOG_WARN("Total number of logs: {} logs", compressor_frontend::number_of_log_messages);
         return 0;
     }

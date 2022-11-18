@@ -9,6 +9,13 @@
 using std::string;
 
 namespace compressor_frontend {
+
+    void OutputBuffer::reset () {
+        m_has_timestamp = false;
+        m_has_delimiters = false ;
+        Buffer::reset();
+    }
+
     void OutputBuffer::increment_pos () {
         m_curr_pos++;
         if (m_curr_pos == m_curr_storage_size) {

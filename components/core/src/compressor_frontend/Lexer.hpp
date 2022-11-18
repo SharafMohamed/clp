@@ -10,6 +10,10 @@
 #include <unordered_set>
 #include <vector>
 
+// re2
+#include <re2/re2.h>
+#include <re2/set.h>
+
 // Project headers
 #include "../ReaderInterface.hpp"
 #include "../Stopwatch.hpp"
@@ -28,6 +32,12 @@ namespace compressor_frontend {
     template <typename NFAStateType, typename DFAStateType>
     class Lexer {
     public:
+        enum class ParsingAction {
+            None,
+            Compress,
+            CompressAndFinish
+        };
+
         // std::vector<int> can be declared as constexpr in c++20
         inline static const std::vector<int> cTokenEndTypes = {(int) SymbolID::TokenEndID};
         inline static const std::vector<int> cTokenUncaughtStringTypes = {(int) SymbolID::TokenUncaughtStringID};
@@ -52,7 +62,8 @@ namespace compressor_frontend {
         // Constructor
         Lexer () : m_byte_buf_pos(0), m_bytes_read(0), m_line(0), m_fail_pos(0), m_reduce_pos(0), m_match(false), m_match_pos(0), m_start_pos(0),
                    m_match_line(0), m_last_match_pos(0), m_last_match_line(0), m_type_ids(), m_is_delimiter(), m_is_first_char(), m_static_byte_buf(),
-                   m_finished_reading_file(false), m_at_end_of_file(false), m_last_read_first_half_of_buf(false), m_reader(nullptr), m_has_delimiters(false) {
+                   m_finished_reading_file(false), m_at_end_of_file(false), m_last_read_first_half_of_buf(false), m_reader(nullptr), m_has_delimiters(false),
+                   m_re2_set(RE2::Options(), RE2::Anchor::ANCHOR_BOTH){
             for (bool& i: m_is_first_char) {
                 i = false;
             }
@@ -131,7 +142,28 @@ namespace compressor_frontend {
          * @return Token
          * @throw runtime_error("Input buffer about to overflow")
          */
+        ParsingAction scan_new_no_token (InputBuffer& input_buffer);
+
+        /**
+         * Gets next token from the input string, typed by re2
+         * @return Token
+         * @throw runtime_error("Input buffer about to overflow")
+         */
         Token scan_re2 (InputBuffer& input_buffer);
+
+        /**
+         * Gets next token from the input string, untyped
+         * @return Token
+         * @throw runtime_error("Input buffer about to overflow")
+         */
+        Token scan_untyped_token (InputBuffer& input_buffer);
+
+        /**
+         * Gets next line from the input string
+         * @return re2::StringPiece
+         * @throw runtime_error("Input buffer about to overflow")
+         */
+        re2::StringPiece get_next_line (InputBuffer& input_buffer);
 
         /**
          * scan(), but with wild wildcards in the input string (for search)
@@ -168,6 +200,10 @@ namespace compressor_frontend {
         // First character of any variable in the schema
         [[nodiscard]] const bool& is_first_char (uint8_t byte) const {
             return m_is_first_char[byte];
+        }
+
+        void set_scan (re2::StringPiece text, std::vector<int>* match_ids) {
+            m_re2_set.Match(text, match_ids);
         }
 
         std::map<std::string, uint32_t> m_symbol_id;
@@ -224,6 +260,11 @@ namespace compressor_frontend {
         unique_ptr<RegexDFA<DFAStateType>> m_dfa;
         bool m_asked_for_more_data;
         DFAStateType* m_prev_state;
+
+        //re2 stuff
+        RE2::Set m_re2_set;
+        std::vector<std::vector<int>> m_re2_type_ids_set;
+
     };
 
     namespace lexers {

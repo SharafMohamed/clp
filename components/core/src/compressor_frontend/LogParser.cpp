@@ -1,5 +1,8 @@
 #include "LogParser.hpp"
 
+// glog
+#include <glog/logging.h>
+
 // C++ standard libraries
 #include <filesystem>
 #include <iostream>
@@ -9,6 +12,11 @@
 #include "../clp/utils.hpp"
 #include "Constants.hpp"
 #include "SchemaParser.hpp"
+
+extern Stopwatch re2_parse_stopwatch;
+extern Stopwatch structured_re2_parse_stopwatch;
+extern Stopwatch new_parse_stopwatch;
+extern Stopwatch no_token_new_parse_stopwatch;
 
 using compressor_frontend::finite_automata::RegexAST;
 using compressor_frontend::finite_automata::RegexASTCat;
@@ -25,7 +33,7 @@ using std::unique_ptr;
 using std::vector;
 
 namespace compressor_frontend {
-    LogParser::LogParser (const string& schema_file_path) {
+    LogParser::LogParser (const string& schema_file_path, RE2::Options options) : full_schema_capture_pattern(m_full_schema, options) {
         std::unique_ptr<compressor_frontend::SchemaFileAST> schema_ast = compressor_frontend::SchemaParser::try_schema_file(schema_file_path);
         add_delimiters(schema_ast->m_delimiters);
         add_rules(schema_ast);
@@ -152,6 +160,7 @@ namespace compressor_frontend {
         return false;
     }
 
+
     LogParser::ParsingAction LogParser::parse_new (InputBuffer& input_buffer, OutputBuffer& output_buffer) {
         if (m_has_start_of_log_message) {
             // switch to timestamped messages if a timestamp is ever found at the start of line (potentially dangerous as it never switches back)
@@ -201,6 +210,28 @@ namespace compressor_frontend {
                 return ParsingAction::Compress;
             }
             output_buffer.increment_pos();
+        }
+    }
+
+    LogParser::ParsingAction LogParser::parse_new_no_tokens (InputBuffer& input_buffer) {
+        LogParser::ParsingAction parsing_action = ParsingAction::None;
+        while (parsing_action == ParsingAction::None) {
+            parsing_action = get_next_symbol_new_no_token(input_buffer);
+        }
+        input_buffer.set_consumed_pos(input_buffer.get_curr_pos());
+        return parsing_action;
+    }
+
+    LogParser::ParsingAction LogParser::parse_re2_no_token (InputBuffer& input_buffer) {
+        while (true) {
+            Token next_token = get_next_symbol_re2(input_buffer);
+            int token_type = next_token.m_type_ids->at(0);
+            if (token_type == (int) SymbolID::TokenEndID) {
+                return ParsingAction::CompressAndFinish;
+            } else if (next_token.get_char(0) == '\n') {
+                input_buffer.set_consumed_pos(input_buffer.get_curr_pos());
+                return ParsingAction::Compress;
+            }
         }
     }
 
@@ -256,12 +287,139 @@ namespace compressor_frontend {
         }
     }
 
+    LogParser::ParsingAction LogParser::parse_re2_structured (InputBuffer& input_buffer) {
+        while (true) {
+            re2::StringPiece timestamp;
+            re2::StringPiece verbosity;
+            re2::StringPiece static_text;
+            //re2::StringPiece next_line = get_next_line(input_buffer);
+            //RE2::PartialMatch(next_line, hadoop_pattern, &timestamp, &verbosity);
+
+            re2::StringPiece input_string = {input_buffer.get_active_buffer() + input_buffer.get_curr_pos(), input_buffer.get_bytes_read() -  input_buffer.get_curr_pos()};
+            while(RE2::FindAndConsume(&input_string, hadoop_pattern, &timestamp, &verbosity)) {
+                // DO NOTHING
+            }
+            input_buffer.set_curr_pos(input_buffer.get_bytes_read());
+            if(input_buffer.get_curr_pos() == input_buffer.get_curr_storage_size()) {
+                input_buffer.set_curr_pos(0);
+            }
+            input_buffer.set_consumed_pos(input_buffer.get_bytes_read() - 1);
+
+            //SPDLOG_INFO(next_line.as_string());
+            //bool matched = RE2::FullMatch(next_line, full_pattern, &timestamp, &verbosity, &static_text);
+            //SPDLOG_INFO("timestamp:{}", timestamp);
+            //SPDLOG_INFO("verbosity:{}", verbosity);
+            //SPDLOG_INFO("static_text:{}", static_text);
+            //static int number_of_matches = 0;
+            //static std::string output_name = "/home/sharaf/glog_logs/log";
+            //static int number_of_logs = 0;
+            //if(matched) {
+            //        google::SetLogDestination(google::GLOG_INFO,(output_name + std::to_string(number_of_logs) + ".log").c_str());
+            //        number_of_matches++;
+            //        if(number_of_matches > 30000) {
+            //            number_of_matches = 0;
+            //            number_of_logs++;
+            //        }
+            //        if(verbosity == "INFO") {
+            //            LOG(INFO) << static_text;
+            //        }
+            //        if(verbosity == "WARN") {
+            //            LOG(WARNING) << static_text;
+            //        }
+            //        if(verbosity == "ERROR") {
+            //            LOG(ERROR) << static_text;
+            //        }
+            //        if(verbosity == "FATAL") {
+            //            LOG(FATAL) << static_text;
+            //        }
+            //}
+            if (input_buffer.get_finished_reading_file()) {
+                return ParsingAction::CompressAndFinish;
+            } else {
+                return ParsingAction::Compress;
+            }
+        }
+    }
+
+    LogParser::ParsingAction LogParser::parse_re2_set (InputBuffer& input_buffer) {
+        while (true) {
+            std::vector<int> result;
+            m_lexer.set_scan(get_next_line(input_buffer), &result);
+
+            if (input_buffer.get_at_end_of_file()) {
+                return ParsingAction::CompressAndFinish;
+            } else {
+                input_buffer.set_consumed_pos(input_buffer.get_curr_pos());
+                return ParsingAction::Compress;
+            }
+        }
+    }
+
+    LogParser::ParsingAction LogParser::parse_re2_capture (InputBuffer& input_buffer) {
+        while (true) {
+            re2::StringPiece v_timestamp;
+            re2::StringPiece v_int;
+            re2::StringPiece v_double;
+            re2::StringPiece v_hex;
+            re2::StringPiece v_has_number;
+            re2::StringPiece v_equals;
+            re2::StringPiece v_verbosity;
+            re2::StringPiece v_static_text;
+            re2::StringPiece input_string = {input_buffer.get_active_buffer() + input_buffer.get_curr_pos(),
+                                             input_buffer.get_bytes_read() -  input_buffer.get_curr_pos()};
+            while (RE2::FindAndConsume(&input_string, full_schema_capture_pattern, &v_timestamp, &v_int, &v_double, //&v_hex,
+                                       &v_has_number, &v_equals, &v_verbosity)) {
+                // DO NOTHING
+            }
+
+            // To use this you need to initialize args to be the types you want (e.g. you would make 1 for each schema var because you don't know them apriori)
+            //RE2::Arg* args[10000];
+            //while(RE2::FindAndConsumeN(&input_string, partial_capture_pattern, args, 10000)) {
+            //    // DO NOTHING
+            //    int a = 1;
+            //}
+
+            input_buffer.set_curr_pos(input_buffer.get_bytes_read());
+            if(input_buffer.get_curr_pos() == input_buffer.get_curr_storage_size()) {
+                input_buffer.set_curr_pos(0);
+            }
+            input_buffer.set_consumed_pos(input_buffer.get_bytes_read() - 1);
+
+            if (input_buffer.get_finished_reading_file()) {
+                return ParsingAction::CompressAndFinish;
+            } else {
+                return ParsingAction::Compress;
+            }
+        }
+    }
+
+    LogParser::ParsingAction LogParser::just_get_next_line (InputBuffer& input_buffer) {
+        while (true) {
+            get_next_line(input_buffer);
+
+            if (input_buffer.get_at_end_of_file()) {
+                return ParsingAction::CompressAndFinish;
+            } else {
+                input_buffer.set_consumed_pos(input_buffer.get_curr_pos());
+                return ParsingAction::Compress;
+            }
+        }
+    }
+
     Token LogParser::get_next_symbol_new (InputBuffer& input_buffer) {
         return m_lexer.scan_new(input_buffer);
     }
 
     Token LogParser::get_next_symbol_re2 (InputBuffer& input_buffer) {
         return m_lexer.scan_re2(input_buffer);
+    }
+
+    LogParser::ParsingAction LogParser::get_next_symbol_new_no_token (InputBuffer& input_buffer) {
+         return (LogParser::ParsingAction) m_lexer.scan_new_no_token(input_buffer);
+    }
+
+    re2::StringPiece LogParser::get_next_line (InputBuffer& input_buffer) {
+        return m_lexer.get_next_line(input_buffer);
     }
 }
 

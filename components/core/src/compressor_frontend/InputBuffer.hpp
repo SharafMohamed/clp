@@ -64,6 +64,14 @@ namespace compressor_frontend {
             return m_at_end_of_file;
         }
 
+        [[nodiscard]] bool get_finished_reading_file () const {
+            return m_finished_reading_file;
+        }
+
+        [[nodiscard]] uint32_t get_bytes_read () const {
+            return m_bytes_read;
+        }
+
         /**
          * Check if at end of file, and return next char (or EOF)
          * @return unsigned char
