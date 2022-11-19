@@ -25,4 +25,10 @@ namespace compressor_frontend {
             m_curr_storage_size *= 2;
         }
     }
+
+    void OutputBuffer::reset () {
+        m_has_timestamp = false;
+        m_has_delimiters = false ;
+        Buffer::reset();
+    }
 }

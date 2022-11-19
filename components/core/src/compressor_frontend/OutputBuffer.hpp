@@ -15,6 +15,12 @@ namespace compressor_frontend {
          */
         void increment_pos ();
 
+        /**
+         * Resets output buffer
+         * @return
+         */
+        void reset () override;
+
         void set_has_timestamp (bool has_timestamp) {
             m_has_timestamp = has_timestamp;
         }

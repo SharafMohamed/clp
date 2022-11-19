@@ -366,6 +366,11 @@ namespace compressor_frontend {
                                  input_buffer.get_curr_storage_size(), m_line, &cTokenEndTypes};
                 } else {
                     while (input_buffer.get_at_end_of_file() == false && m_is_first_char[next_char] == false) {
+                        if (input_buffer.about_to_overflow()) {
+                            m_asked_for_more_data = true;
+                            m_prev_state = state;
+                            throw runtime_error("Input buffer about to overflow");
+                        }
                         prev_byte_buf_pos = input_buffer.get_curr_pos();
                         next_char = input_buffer.get_next_character();
                     }
