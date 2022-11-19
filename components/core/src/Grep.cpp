@@ -268,7 +268,7 @@ static bool process_var_token (const QueryToken& query_token, const Archive& arc
         if (query_token.is_double_var()) {
             LogTypeDictionaryEntry::add_double_var(logtype);
         } else {
-            LogTypeDictionaryEntry::add_non_double_var(logtype);
+            LogTypeDictionaryEntry::add_non_double_heuristic_var(logtype);
 
             if (query_token.cannot_convert_to_non_dict_var()) {
                 // Must be a dictionary variable, so search variable dictionary
@@ -331,7 +331,7 @@ SubQueryMatchabilityResult generate_logtypes_and_vars_for_subquery (const Archiv
                 logtype += '*';
             } else {
                 logtype += '*';
-                LogTypeDictionaryEntry::add_non_double_var(logtype);
+                LogTypeDictionaryEntry::add_non_double_heuristic_var(logtype);
                 logtype += '*';
             }
         } else {

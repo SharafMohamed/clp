@@ -217,7 +217,7 @@ void EncodedVariableInterpreter::encode_and_add_to_dictionary (const string& mes
         // Encode variable
         encoded_variable_t encoded_var;
         if (convert_string_to_representable_integer_var(var_str, encoded_var)) {
-            logtype_dict_entry.add_non_double_var();
+            logtype_dict_entry.add_non_double_heuristic_var();
         } else if (convert_string_to_representable_double_var(var_str, encoded_var)) {
             logtype_dict_entry.add_double_var();
         } else {
@@ -227,7 +227,7 @@ void EncodedVariableInterpreter::encode_and_add_to_dictionary (const string& mes
             encoded_var = encode_var_dict_id(id);
             var_ids.push_back(id);
 
-            logtype_dict_entry.add_non_double_var();
+            logtype_dict_entry.add_non_double_heuristic_var();
         }
 
         encoded_vars.push_back(encoded_var);
@@ -289,7 +289,7 @@ bool EncodedVariableInterpreter::encode_and_search_dictionary (const string& var
 
     encoded_variable_t encoded_var;
     if (convert_string_to_representable_integer_var(var_str, encoded_var)) {
-        LogTypeDictionaryEntry::add_non_double_var(logtype);
+        LogTypeDictionaryEntry::add_non_double_heuristic_var(logtype);
         sub_query.add_non_dict_var(encoded_var);
     } else if (convert_string_to_representable_double_var(var_str, encoded_var)) {
         LogTypeDictionaryEntry::add_double_var(logtype);
@@ -302,7 +302,7 @@ bool EncodedVariableInterpreter::encode_and_search_dictionary (const string& var
         }
         encoded_var = encode_var_dict_id(entry->get_id());
 
-        LogTypeDictionaryEntry::add_non_double_var(logtype);
+        LogTypeDictionaryEntry::add_non_double_heuristic_var(logtype);
         sub_query.add_dict_var(encoded_var, entry);
     }
 
