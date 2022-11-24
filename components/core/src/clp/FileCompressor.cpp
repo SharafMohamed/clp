@@ -8,6 +8,9 @@
 // Boost libraries
 #include <boost/filesystem/path.hpp>
 
+// hyperscan
+#include <hs/hs.h>
+
 // libarchive
 #include <archive_entry.h>
 
@@ -255,6 +258,11 @@ namespace clp {
         }
     }
 
+    static int event_handler(unsigned int id, unsigned long long from, unsigned long long to, unsigned int flags, void *ctx) {
+        SPDLOG_WARN("Match for pattern {} with id {} from {} to {}", (char*)ctx, id, from, to);
+        return 0;
+    }
+
     void FileCompressor::parse_and_encode_experiment (size_t target_data_size_of_dicts, streaming_archive::writer::Archive::UserConfig& archive_user_config,
                                                       size_t target_encoded_file_size, const string& path_for_compression, group_id_t group_id,
                                                       streaming_archive::writer::Archive& archive_writer, ReaderInterface& reader)
@@ -268,7 +276,29 @@ namespace clp {
         /// DO NOT USE THESE WITH THE OTHERS, THEY ARE REUSING THE SAME STOPWATCHES CAUSE I WAS LAZY
         // parse(reader, 4);
         // parse(reader, 5);
-        parse(reader, 6);
+        // parse(reader, 6);
+
+        hs_database_t* database;
+        hs_compile_error_t* compile_err;
+
+        //char* pattern = "test";
+        //hs_compile(pattern, 0, HS_MODE_BLOCK, NULL, &database, &compile_err);
+
+        const char* patterns[2] = {"cat", "car"};
+        const unsigned int ids[2] = {0, 1};
+        hs_compile_multi(patterns, 0, ids, 2, HS_MODE_BLOCK, NULL, &database, &compile_err);
+
+
+        hs_scratch_t* scratch = NULL;
+        hs_alloc_scratch(database, &scratch);
+
+        auto result = hs_scan(database, "cat 123 test", 12, 0, scratch, event_handler, patterns);
+        SPDLOG_INFO("result: {}", result);
+        result = hs_scan(database, "car test 123 test car cat", 25, 0, scratch, event_handler, patterns);
+        SPDLOG_INFO("result: {}", result);
+
+        hs_free_scratch(scratch);
+        hs_free_database(database);
 
     }
 

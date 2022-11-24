@@ -308,11 +308,12 @@ target_link_libraries(clp
         Boost::filesystem Boost::iostreams Boost::program_options
         fmt::fmt
         glog
-        spdlog::spdlog
-        ${sqlite_LIBRARY_DEPENDENCIES}
+        hs
         LibArchive::LibArchive
         MariaDBClient::MariaDBClient
         re2
+        spdlog::spdlog
+        ${sqlite_LIBRARY_DEPENDENCIES}
         stdc++fs
         yaml-cpp::yaml-cpp
         ZStd::ZStd
