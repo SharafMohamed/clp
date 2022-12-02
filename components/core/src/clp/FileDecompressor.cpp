@@ -11,7 +11,8 @@ using std::string;
 
 namespace clp {
     bool FileDecompressor::decompress_file (streaming_archive::MetadataDB::FileIterator& file_metadata_ix, const string& output_dir,
-                                            streaming_archive::reader::Archive& archive_reader, std::unordered_map<string, string>& temp_path_to_final_path)
+                                            streaming_archive::reader::Archive& archive_reader, std::unordered_map<string, string>& temp_path_to_final_path,
+                                            bool use_heuristic)
     {
         // Open compressed file
         auto error_code = archive_reader.open_file(m_encoded_file, file_metadata_ix, true);
@@ -55,7 +56,7 @@ namespace clp {
         // Decompress
         archive_reader.reset_file_indices(m_encoded_file);
         while (archive_reader.get_next_message(m_encoded_file, m_encoded_message)) {
-            if (!archive_reader.decompress_message(m_encoded_file, m_encoded_message, m_decompressed_message)) {
+            if (!archive_reader.decompress_message(m_encoded_file, m_encoded_message, m_decompressed_message, use_heuristic)) {
                 // Can't decompress any more of file
                 break;
             }

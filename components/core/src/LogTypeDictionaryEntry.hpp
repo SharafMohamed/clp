@@ -72,7 +72,7 @@ public:
      * @param var_delim
      * @return The variable's position in the logtype, or SIZE_MAX if var_ix is out of bounds
      */
-    size_t get_var_info (size_t var_ix, VarDelim& var_delim) const;
+    size_t get_var_info (size_t var_ix, VarDelim& var_delim, char& schema_id) const;
     /**
      * Gets the variable delimiter at the given index
      * @param var_ix The index of the variable delimiter to get

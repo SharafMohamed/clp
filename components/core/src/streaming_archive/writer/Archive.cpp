@@ -345,7 +345,7 @@ namespace streaming_archive::writer {
         }
         for (uint32_t i = 1; i < uncompressed_msg_pos; i++) {
             compressor_frontend::Token& token = uncompressed_msg[i];
-            int token_type = token.m_type_ids->at(0);
+            int token_type = token.m_type_ids_ptr->at(0);
             if (has_delimiter && token_type != (int) compressor_frontend::SymbolID::TokenUncaughtStringID &&
                 token_type != (int) compressor_frontend::SymbolID::TokenNewlineId) {
                 m_logtype_dict_entry.add_constant(token.get_delimiter(), 0, 1);

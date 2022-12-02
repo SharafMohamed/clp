@@ -32,6 +32,14 @@ namespace compressor_frontend::finite_automata {
             return m_tags;
         }
 
+        [[nodiscard]] const int get_highest_priority_tag (bool reversed) const {
+            if (reversed) {
+                return m_tags.back();
+            } else {
+                return m_tags.front();
+            }
+        }
+
         bool is_accepting () {
             return !m_tags.empty();
         }

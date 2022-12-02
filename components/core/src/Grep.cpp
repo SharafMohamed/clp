@@ -27,6 +27,7 @@ class QueryToken {
 public:
     // Constructors
     QueryToken (const string& query_string, size_t begin_pos, size_t end_pos, bool is_var);
+    QueryToken (const string& query_string, size_t begin_pos, size_t end_pos, bool is_var, std::set<int> schema_types);
 
     // Methods
     bool cannot_convert_to_non_dict_var () const;
@@ -42,8 +43,9 @@ public:
     size_t get_begin_pos () const;
     size_t get_end_pos () const;
     const string& get_value () const;
+    int get_current_schema_type () const;
 
-    bool change_to_next_possible_type ();
+    bool change_to_next_possible_type (bool use_heuristic);
 
 private:
     // Types
@@ -69,12 +71,16 @@ private:
     size_t m_end_pos;
     string m_value;
 
+    // Schema var type
+    std::set<int> m_schema_types;
     // Type if variable has unambiguous type
     Type m_type;
     // Types if variable type is ambiguous
     vector<Type> m_possible_types;
     // Index of the current possible type selected for generating a subquery
     size_t m_current_possible_type_ix;
+    // Index of the current possible schema type selected for generating a subquery
+    std::set<int>::iterator m_current_possible_schema_type_ix;
 };
 
 QueryToken::QueryToken (const string& query_string, const size_t begin_pos, const size_t end_pos, const bool is_var) : m_current_possible_type_ix(0) {
@@ -143,6 +149,12 @@ QueryToken::QueryToken (const string& query_string, const size_t begin_pos, cons
     }
 }
 
+QueryToken::QueryToken (const string& query_string, const size_t begin_pos, const size_t end_pos, const bool is_var, std::set<int> schema_types) :
+        QueryToken(query_string, begin_pos, end_pos, is_var) {
+    m_schema_types = schema_types;
+    m_current_possible_schema_type_ix = m_schema_types.begin();
+}
+
 bool QueryToken::cannot_convert_to_non_dict_var () const {
     return m_cannot_convert_to_non_dict_var;
 }
@@ -203,7 +215,26 @@ const string& QueryToken::get_value () const {
     return m_value;
 }
 
-bool QueryToken::change_to_next_possible_type () {
+int QueryToken::get_current_schema_type () const {
+    return *m_current_possible_schema_type_ix;
+}
+
+bool QueryToken::change_to_next_possible_type (bool use_heuristic) {
+    // cycle through all schema types if current type is DictOrIntVar (except TokenUncaughtStringID is Logtype and TokenDoubleId is DoubleVar)
+    if(use_heuristic == false && m_possible_types[m_current_possible_type_ix] == Type::DictOrIntVar) {
+        m_current_possible_schema_type_ix++;
+        while (m_current_possible_schema_type_ix != m_schema_types.end() &&
+                (*m_current_possible_schema_type_ix == (int) compressor_frontend::SymbolID::TokenUncaughtStringID ||
+                 *m_current_possible_schema_type_ix == (int) compressor_frontend::SymbolID::TokenDoubleId)) {
+            m_current_possible_schema_type_ix++;
+        }
+        if(m_current_possible_schema_type_ix != m_schema_types.end()) {
+            return true;
+        }
+        m_current_possible_schema_type_ix = m_schema_types.begin();
+    }
+
+    // cycle through Logtype, DictOrIntVar,DoubleVar
     if (m_current_possible_type_ix < m_possible_types.size() - 1) {
         ++m_current_possible_type_ix;
         return true;
@@ -223,7 +254,8 @@ bool QueryToken::change_to_next_possible_type () {
  * @param logtype
  * @return true if this token might match a message, false otherwise
  */
-static bool process_var_token (const QueryToken& query_token, const Archive& archive, bool ignore_case, SubQuery& sub_query, string& logtype);
+static bool process_var_token (const QueryToken& query_token, const Archive& archive, bool ignore_case, SubQuery& sub_query, string& logtype,
+                               bool use_heuristic);
 /**
  * Finds a message matching the given query
  * @param query
@@ -246,9 +278,11 @@ static bool find_matching_message (const Query& query, Archive& archive, const S
  * @return SubQueryMatchabilityResult::MayMatch
  */
 static SubQueryMatchabilityResult generate_logtypes_and_vars_for_subquery (const Archive& archive, string& processed_search_string,
-                                                                           vector<QueryToken>& query_tokens, bool ignore_case, SubQuery& sub_query);
+                                                                           vector<QueryToken>& query_tokens, bool ignore_case, SubQuery& sub_query,
+                                                                           bool use_heuristic);
 
-static bool process_var_token (const QueryToken& query_token, const Archive& archive, bool ignore_case, SubQuery& sub_query, string& logtype) {
+static bool process_var_token (const QueryToken& query_token, const Archive& archive, bool ignore_case, SubQuery& sub_query, string& logtype,
+                               bool use_heuristic) {
     // Even though we may have a precise variable, we still fallback to decompressing to ensure that it is in the right place in the message
     sub_query.mark_wildcard_match_required();
 
@@ -268,7 +302,11 @@ static bool process_var_token (const QueryToken& query_token, const Archive& arc
         if (query_token.is_double_var()) {
             LogTypeDictionaryEntry::add_double_var(logtype);
         } else {
-            LogTypeDictionaryEntry::add_non_double_heuristic_var(logtype);
+            if (use_heuristic) {
+                LogTypeDictionaryEntry::add_non_double_heuristic_var(logtype);
+            } else {
+                LogTypeDictionaryEntry::add_non_double_schema_var(logtype, (char) query_token.get_current_schema_type());
+            }
 
             if (query_token.cannot_convert_to_non_dict_var()) {
                 // Must be a dictionary variable, so search variable dictionary
@@ -312,7 +350,7 @@ static bool find_matching_message (const Query& query, Archive& archive, const S
 }
 
 SubQueryMatchabilityResult generate_logtypes_and_vars_for_subquery (const Archive& archive, string& processed_search_string, vector<QueryToken>& query_tokens,
-                                                                    bool ignore_case, SubQuery& sub_query)
+                                                                    bool ignore_case, SubQuery& sub_query, bool use_heuristic)
 {
     size_t last_token_end_pos = 0;
     string logtype;
@@ -337,7 +375,7 @@ SubQueryMatchabilityResult generate_logtypes_and_vars_for_subquery (const Archiv
         } else {
             if (!query_token.is_var()) {
                 logtype += query_token.get_value();
-            } else if (!process_var_token(query_token, archive, ignore_case, sub_query, logtype)) {
+            } else if (!process_var_token(query_token, archive, ignore_case, sub_query, logtype, use_heuristic)) {
                 return SubQueryMatchabilityResult::WontMatch;
             }
         }
@@ -396,8 +434,9 @@ bool Grep::process_raw_query (const Archive& archive, const string& search_strin
             query_tokens.emplace_back(processed_search_string, begin_pos, end_pos, is_var);
         }
     } else {
-        while (get_bounds_of_next_potential_var(processed_search_string, begin_pos, end_pos, is_var, forward_lexer, reverse_lexer)) {
-            query_tokens.emplace_back(processed_search_string, begin_pos, end_pos, is_var);
+        std::set<int> schema_types;
+        while (get_bounds_of_next_potential_var(processed_search_string, begin_pos, end_pos, is_var, schema_types, forward_lexer, reverse_lexer)) {
+            query_tokens.emplace_back(processed_search_string, begin_pos, end_pos, is_var, schema_types);
         }
     }
 
@@ -422,7 +461,8 @@ bool Grep::process_raw_query (const Archive& archive, const string& search_strin
         sub_query.clear();
 
         // Compute logtypes and variables for query
-        auto matchability = generate_logtypes_and_vars_for_subquery(archive, processed_search_string, query_tokens, query.get_ignore_case(), sub_query);
+        auto matchability = generate_logtypes_and_vars_for_subquery(archive, processed_search_string, query_tokens, query.get_ignore_case(), sub_query,
+                                                                    use_heuristic);
         switch (matchability) {
             case SubQueryMatchabilityResult::SupercedesAllSubQueries:
                 // Clear all sub-queries since they will be superceded by this sub-query
@@ -442,7 +482,7 @@ bool Grep::process_raw_query (const Archive& archive, const string& search_strin
         // Update combination of ambiguous tokens
         type_of_one_token_changed = false;
         for (auto* ambiguous_token : ambiguous_tokens) {
-            if (ambiguous_token->change_to_next_possible_type()) {
+            if (ambiguous_token->change_to_next_possible_type(use_heuristic)) {
                 type_of_one_token_changed = true;
                 break;
             }
@@ -565,7 +605,7 @@ bool Grep::get_bounds_of_next_potential_var (const string& value, size_t& begin_
 }
 
 bool
-Grep::get_bounds_of_next_potential_var (const string& value, size_t& begin_pos, size_t& end_pos, bool& is_var,
+Grep::get_bounds_of_next_potential_var (const string& value, size_t& begin_pos, size_t& end_pos, bool& is_var, std::set<int>& schema_types,
                                         compressor_frontend::lexers::ByteLexer& forward_lexer, compressor_frontend::lexers::ByteLexer& reverse_lexer) {
     const size_t value_length = value.length();
     if (end_pos >= value_length) {
@@ -642,37 +682,34 @@ Grep::get_bounds_of_next_potential_var (const string& value, size_t& begin_pos, 
                     break;
                 }
             }
+            compressor_frontend::Token token;
             if (has_wildcard_in_middle || (has_prefix_wildcard && has_suffix_wildcard)) {
                 // DO NOTHING
-            } else if (has_suffix_wildcard) { //asdsas*
-                StringReader stringReader;
-                stringReader.open(value.substr(begin_pos, end_pos - begin_pos - 1));
-                forward_lexer.reset(stringReader);
-                compressor_frontend::Token token = forward_lexer.scan_with_wildcard(value[end_pos - 1]);
-                if (token.m_type_ids->at(0) != (int) compressor_frontend::SymbolID::TokenUncaughtStringID &&
-                    token.m_type_ids->at(0) != (int) compressor_frontend::SymbolID::TokenEndID) {
+            } else {
+                if (has_suffix_wildcard) { //asdsas*
+                    StringReader stringReader;
+                    stringReader.open(value.substr(begin_pos, end_pos - begin_pos - 1));
+                    forward_lexer.reset(stringReader);
+                    token = forward_lexer.scan_with_wildcard(value[end_pos - 1]);
+                } else if (has_prefix_wildcard) { // *asdas
+                    std::string value_reverse = value.substr(begin_pos + 1, end_pos - begin_pos - 1);
+                    std::reverse(value_reverse.begin(), value_reverse.end());
+                    StringReader stringReader;
+                    stringReader.open(value_reverse);
+                    reverse_lexer.reset(stringReader);
+                    token = reverse_lexer.scan_with_wildcard(value[begin_pos]);
+                } else { // no wildcards
+                    StringReader stringReader;
+                    stringReader.open(value.substr(begin_pos, end_pos - begin_pos));
+                    forward_lexer.reset(stringReader);
+                    token = forward_lexer.scan();
+                    token.m_type_ids_set.insert(token.m_type_ids_ptr->at(0));
+                }
+                if (token.m_type_ids_set.find((int) compressor_frontend::SymbolID::TokenUncaughtStringID) == token.m_type_ids_set.end() &&
+                    token.m_type_ids_set.find((int) compressor_frontend::SymbolID::TokenEndID) == token.m_type_ids_set.end() ) {
                     is_var = true;
                 }
-            } else if (has_prefix_wildcard) { // *asdas
-                std::string value_reverse = value.substr(begin_pos + 1, end_pos - begin_pos - 1);
-                std::reverse(value_reverse.begin(), value_reverse.end());
-                StringReader stringReader;
-                stringReader.open(value_reverse);
-                reverse_lexer.reset(stringReader);
-                compressor_frontend::Token token = reverse_lexer.scan_with_wildcard(value[begin_pos]);
-                if (token.m_type_ids->at(0) != (int) compressor_frontend::SymbolID::TokenUncaughtStringID &&
-                    token.m_type_ids->at(0) != (int)compressor_frontend::SymbolID::TokenEndID) {
-                    is_var = true;
-                }
-            } else { // no wildcards
-                StringReader stringReader;
-                stringReader.open(value.substr(begin_pos, end_pos - begin_pos));
-                forward_lexer.reset(stringReader);
-                compressor_frontend::Token token = forward_lexer.scan();
-                if (token.m_type_ids->at(0) != (int) compressor_frontend::SymbolID::TokenUncaughtStringID &&
-                    token.m_type_ids->at(0) != (int) compressor_frontend::SymbolID::TokenEndID) {
-                    is_var = true;
-                }
+                schema_types = token.m_type_ids_set;
             }
         }
     }
@@ -691,7 +728,8 @@ void Grep::calculate_sub_queries_relevant_to_file (const File& compressed_file, 
     }
 }
 
-size_t Grep::search_and_output (const Query& query, size_t limit, Archive& archive, File& compressed_file, OutputFunc output_func, void* output_func_arg) {
+size_t Grep::search_and_output (const Query& query, size_t limit, Archive& archive, File& compressed_file, OutputFunc output_func, void* output_func_arg,
+                                bool use_heuristic) {
     size_t num_matches = 0;
 
     Message compressed_msg;
@@ -705,7 +743,7 @@ size_t Grep::search_and_output (const Query& query, size_t limit, Archive& archi
         }
 
         // Decompress match
-        bool decompress_successful = archive.decompress_message(compressed_file, compressed_msg, decompressed_msg);
+        bool decompress_successful = archive.decompress_message(compressed_file, compressed_msg, decompressed_msg, use_heuristic);
         if (!decompress_successful) {
             break;
         }
@@ -731,7 +769,8 @@ size_t Grep::search_and_output (const Query& query, size_t limit, Archive& archi
     return num_matches;
 }
 
-bool Grep::search_and_decompress (const Query& query, Archive& archive, File& compressed_file, Message& compressed_msg, string& decompressed_msg) {
+bool Grep::search_and_decompress (const Query& query, Archive& archive, File& compressed_file, Message& compressed_msg, string& decompressed_msg,
+                                  bool use_heuristic) {
     const string& orig_file_path = compressed_file.get_orig_path();
 
     bool matched = false;
@@ -744,7 +783,7 @@ bool Grep::search_and_decompress (const Query& query, Archive& archive, File& co
         }
 
         // Decompress match
-        bool decompress_successful = archive.decompress_message(compressed_file, compressed_msg, decompressed_msg);
+        bool decompress_successful = archive.decompress_message(compressed_file, compressed_msg, decompressed_msg, use_heuristic);
         if (false == decompress_successful) {
             return false;
         }
@@ -765,7 +804,7 @@ bool Grep::search_and_decompress (const Query& query, Archive& archive, File& co
     return true;
 }
 
-size_t Grep::search (const Query& query, size_t limit, Archive& archive, File& compressed_file) {
+size_t Grep::search (const Query& query, size_t limit, Archive& archive, File& compressed_file, bool use_heuristic) {
     size_t num_matches = 0;
 
     Message compressed_msg;
@@ -786,7 +825,7 @@ size_t Grep::search (const Query& query, size_t limit, Archive& archive, File& c
             (query.contains_sub_queries() == false && query.search_string_matches_all() == false))
         {
             // Decompress match
-            bool decompress_successful = archive.decompress_message(compressed_file, compressed_msg, decompressed_msg);
+            bool decompress_successful = archive.decompress_message(compressed_file, compressed_msg, decompressed_msg, use_heuristic);
             if (!decompress_successful) {
                 break;
             }

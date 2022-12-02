@@ -61,7 +61,8 @@ public:
      * @return true if another potential variable was found, false otherwise
      */
     static bool get_bounds_of_next_potential_var (const std::string& value, size_t& begin_pos, size_t& end_pos, bool& is_var,
-                                                  compressor_frontend::lexers::ByteLexer& forward_lexer, compressor_frontend::lexers::ByteLexer& reverse_lexer);
+                                                  std::set<int>& schema_types, compressor_frontend::lexers::ByteLexer& forward_lexer,
+                                                  compressor_frontend::lexers::ByteLexer& reverse_lexer);
     
     /**
      * Marks which sub-queries in each query are relevant to the given file
@@ -83,9 +84,10 @@ public:
      * @throw TimestampPattern::OperationFailed if failed to insert timestamp into message
      */
     static size_t search_and_output (const Query& query, size_t limit, streaming_archive::reader::Archive& archive,
-                                     streaming_archive::reader::File& compressed_file, OutputFunc output_func, void* output_func_arg);
+                                     streaming_archive::reader::File& compressed_file, OutputFunc output_func, void* output_func_arg,
+                                     bool use_heuristic);
     static bool search_and_decompress (const Query& query, streaming_archive::reader::Archive& archive, streaming_archive::reader::File& compressed_file,
-            streaming_archive::reader::Message& compressed_msg, std::string& decompressed_msg);
+                                       streaming_archive::reader::Message& compressed_msg, std::string& decompressed_msg, bool use_heuristic);
     /**
      * Searches a file with the given query without outputting the results
      * @param query
@@ -96,7 +98,8 @@ public:
      * @throw streaming_archive::reader::Archive::OperationFailed if decompression unexpectedly fails
      * @throw TimestampPattern::OperationFailed if failed to insert timestamp into message
      */
-    static size_t search (const Query& query, size_t limit, streaming_archive::reader::Archive& archive, streaming_archive::reader::File& compressed_file);
+    static size_t search (const Query& query, size_t limit, streaming_archive::reader::Archive& archive, streaming_archive::reader::File& compressed_file,
+                          bool use_heuristic);
 };
 
 #endif // GREP_HPP

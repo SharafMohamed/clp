@@ -32,7 +32,7 @@ static void escape_variable_delimiters (const string& value, size_t begin_ix, si
     }
 }
 
-size_t LogTypeDictionaryEntry::get_var_info (size_t var_ix, VarDelim& var_delim) const {
+size_t LogTypeDictionaryEntry::get_var_info (size_t var_ix, VarDelim& var_delim, char& schema_id) const {
     if (var_ix >= m_var_positions.size()) {
         return SIZE_MAX;
     }
@@ -40,7 +40,11 @@ size_t LogTypeDictionaryEntry::get_var_info (size_t var_ix, VarDelim& var_delim)
     auto var_position = m_var_positions[var_ix];
     var_delim = (VarDelim)m_value[var_position];
 
-    return m_var_positions[var_ix];
+    if(var_delim == VarDelim::NonDouble) {
+        schema_id = m_value[var_position + 1];
+    }
+
+    return var_position;
 }
 
 LogTypeDictionaryEntry::VarDelim LogTypeDictionaryEntry::get_var_delim (size_t var_ix) const {

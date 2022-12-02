@@ -27,7 +27,7 @@ using std::unique_ptr;
 using std::unordered_set;
 
 namespace clp {
-    bool decompress (CommandLineArguments& command_line_args, const unordered_set<string>& files_to_decompress) {
+    bool decompress (CommandLineArguments& command_line_args, const unordered_set<string>& files_to_decompress, bool use_heuristic) {
         ErrorCode error_code;
 
         // Create output directory in case it doesn't exist
@@ -94,7 +94,7 @@ namespace clp {
 
                         // Decompress file
                         if (false == file_decompressor.decompress_file(file_metadata_ix, command_line_args.get_output_dir(), archive_reader,
-                                                                       temp_path_to_final_path))
+                                                                       temp_path_to_final_path, use_heuristic))
                         {
                             return false;
                         }
@@ -122,7 +122,7 @@ namespace clp {
 
                         // Decompress file
                         if (false == file_decompressor.decompress_file(file_metadata_ix, command_line_args.get_output_dir(), archive_reader,
-                                                                       temp_path_to_final_path))
+                                                                       temp_path_to_final_path, use_heuristic))
                         {
                             return false;
                         }
@@ -152,7 +152,7 @@ namespace clp {
 
                         // Decompress file
                         if (false == file_decompressor.decompress_file(file_metadata_ix, command_line_args.get_output_dir(), archive_reader,
-                                                                       temp_path_to_final_path))
+                                                                       temp_path_to_final_path, use_heuristic))
                         {
                             return false;
                         }

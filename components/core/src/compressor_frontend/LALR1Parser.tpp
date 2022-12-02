@@ -505,14 +505,14 @@ namespace compressor_frontend {
     template <typename NFAStateType, typename DFAStateType>
     string LALR1Parser<NFAStateType, DFAStateType>::get_input_until_next_newline (ReaderInterface& reader, Token* error_token) {
         string rest_of_line;
-        bool next_is_end_token = (error_token->m_type_ids->at(0) == (int) SymbolID::TokenEndID);
+        bool next_is_end_token = (error_token->m_type_ids_ptr->at(0) == (int) SymbolID::TokenEndID);
         bool next_has_newline = (error_token->get_string().find('\n') != string::npos) || (error_token->get_string().find('\r') != string::npos);
         while (!next_has_newline && !next_is_end_token) {
             Token token = get_next_symbol();
             next_has_newline = (token.get_string().find('\n') != string::npos) || (token.get_string().find('\r') != string::npos);
             if (!next_has_newline) {
                 rest_of_line += token.get_string();
-                next_is_end_token = (token.m_type_ids->at(0) == (int) SymbolID::TokenEndID);
+                next_is_end_token = (token.m_type_ids_ptr->at(0) == (int) SymbolID::TokenEndID);
             }
         }
         rest_of_line += "\n";
@@ -553,7 +553,7 @@ namespace compressor_frontend {
             error_indicator += " ";
         }
         error_indicator += "^\n";
-        if (token.m_type_ids->at(0) == (int) SymbolID::TokenEndID && consumed_input.empty()) {
+        if (token.m_type_ids_ptr->at(0) == (int) SymbolID::TokenEndID && consumed_input.empty()) {
             error_type = "empty file";
             error_indicator = "^\n";
         } else {
@@ -629,7 +629,7 @@ namespace compressor_frontend {
 
     template <typename NFAStateType, typename DFAStateType>
     bool LALR1Parser<NFAStateType, DFAStateType>::parse_advance (Token& next_token, bool* accept) {
-        for (int const& type: *(next_token.m_type_ids)) {
+        for (int const& type: *(next_token.m_type_ids_ptr)) {
             if (parse_symbol(type, next_token, accept)) {
                 return (*accept);
             }

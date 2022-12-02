@@ -2,6 +2,7 @@
 #define COMPRESSOR_FRONTEND_TOKEN_HPP
 
 // C++ standard libraries
+#include <set>
 #include <string>
 #include <vector>
 
@@ -9,11 +10,16 @@ namespace compressor_frontend {
     class Token {
     public:
         // Constructor
-        Token () : m_buffer(nullptr), m_buffer_size(0), m_type_ids(nullptr), m_start_pos(0), m_end_pos(0), m_line(0) {}
+        Token () : m_buffer(nullptr), m_buffer_size(0), m_type_ids_ptr(nullptr), m_start_pos(0), m_end_pos(0), m_line(0) {}
 
         // Constructor
-        Token (uint32_t start_pos, uint32_t end_pos, char* buffer, uint32_t buffer_size, uint32_t line, const std::vector<int>* type_ids) :
-                m_start_pos(start_pos), m_end_pos(end_pos), m_buffer(buffer), m_buffer_size(buffer_size), m_line(line), m_type_ids(type_ids) {}
+        Token (uint32_t start_pos, uint32_t end_pos, char* buffer, uint32_t buffer_size, uint32_t line, const std::vector<int>* type_ids_ptr) :
+                m_start_pos(start_pos), m_end_pos(end_pos), m_buffer(buffer), m_buffer_size(buffer_size), m_line(line), m_type_ids_ptr(type_ids_ptr) {}
+
+
+        Token (uint32_t start_pos, uint32_t end_pos, char* buffer, uint32_t buffer_size, uint32_t line, std::set<int> type_ids_set) :
+                m_start_pos(start_pos), m_end_pos(end_pos), m_buffer(buffer), m_buffer_size(buffer_size), m_line(line), m_type_ids_ptr(nullptr),
+                m_type_ids_set(type_ids_set) {}
 
         /**
          * Return the token string (string in the input buffer that the token represents)
@@ -45,7 +51,8 @@ namespace compressor_frontend {
         char* m_buffer;
         uint32_t m_buffer_size;
         uint32_t m_line;
-        const std::vector<int>* m_type_ids;
+        const std::vector<int>* m_type_ids_ptr;
+        std::set<int> m_type_ids_set;
     };
 }
 

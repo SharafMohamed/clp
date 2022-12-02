@@ -41,6 +41,15 @@ int main (int argc, const char* argv[]) {
             break;
     }
 
+    // Check if heuristic is being used
+
+    auto archive_path = boost::filesystem::path(command_line_args.get_archive_path());
+    auto schema_file_path = archive_path / streaming_archive::cSchemaFileName;
+    bool use_heuristic = true;
+    if (boost::filesystem::exists(schema_file_path)) {
+        use_heuristic = false;
+    }
+
     FileWriter file_writer;
     FileWriter index_writer;
 
@@ -66,18 +75,24 @@ int main (int argc, const char* argv[]) {
         size_t constant_begin_pos = 0;
         for (size_t var_ix = 0; var_ix < entry.get_num_vars(); ++var_ix) {
             LogTypeDictionaryEntry::VarDelim var_delim;
-            size_t var_pos = entry.get_var_info(var_ix, var_delim);
+            char schema_id;
+            size_t var_pos = entry.get_var_info(var_ix, var_delim, schema_id);
 
             // Add the constant that's between the last variable and this one, with newlines escaped
             human_readable_value.append(value, constant_begin_pos, var_pos - constant_begin_pos);
 
+            uint8_t delim_len = 1;
             if (LogTypeDictionaryEntry::VarDelim::NonDouble == var_delim) {
                 human_readable_value += "\\v";
+                if(use_heuristic == false) {
+                    human_readable_value += std::to_string((int)schema_id);
+                    delim_len += std::to_string((int)schema_id).length();
+                }
             } else { // LogTypeDictionaryEntry::VarDelim::Double == var_delim
                 human_readable_value += "\\f";
             }
             // Move past the variable delimiter
-            constant_begin_pos = var_pos + 1;
+            constant_begin_pos = var_pos + delim_len;
         }
         // Append remainder of value, if any
         if (constant_begin_pos < value.length()) {

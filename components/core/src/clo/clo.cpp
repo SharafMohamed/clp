@@ -77,7 +77,7 @@ static ErrorCode send_result (const string& orig_file_path, const Message& compr
  * @return SearchFilesResult::Success otherwise
  */
 static SearchFilesResult search_files (Query& query, Archive& archive, MetadataDB::FileIterator& file_metadata_ix,
-                                       const std::atomic_bool& query_cancelled, int controller_socket_fd);
+                                       const std::atomic_bool& query_cancelled, int controller_socket_fd, bool use_heuristic);
 /**
  * Searches an archive with the given path
  * @param command_line_args
@@ -143,7 +143,7 @@ static ErrorCode send_result (const string& orig_file_path, const Message& compr
 }
 
 static SearchFilesResult search_files (Query& query, Archive& archive, MetadataDB::FileIterator& file_metadata_ix,
-                                       const std::atomic_bool& query_cancelled, int controller_socket_fd)
+                                       const std::atomic_bool& query_cancelled, int controller_socket_fd, bool use_heuristic)
 {
     SearchFilesResult result = SearchFilesResult::Success;
 
@@ -172,7 +172,7 @@ static SearchFilesResult search_files (Query& query, Archive& archive, MetadataD
             query.make_all_sub_queries_relevant();
         }
         while (false == query_cancelled &&
-               Grep::search_and_decompress(query, archive, compressed_file, compressed_message, decompressed_message))
+               Grep::search_and_decompress(query, archive, compressed_file, compressed_message, decompressed_message, use_heuristic))
         {
             error_code = send_result(compressed_file.get_orig_path(), compressed_message, decompressed_message,
                                      controller_socket_fd);
@@ -249,7 +249,7 @@ static bool search_archive (const CommandLineArguments& command_line_args, const
     auto& file_metadata_ix = *file_metadata_ix_ptr;
     for (auto segment_id : ids_of_segments_to_search) {
         file_metadata_ix.set_segment_id(segment_id);
-        auto result = search_files(query, archive_reader, file_metadata_ix, query_cancelled, controller_socket_fd);
+        auto result = search_files(query, archive_reader, file_metadata_ix, query_cancelled, controller_socket_fd, use_heuristic);
         if (SearchFilesResult::ResultSendFailure == result) {
             // Stop search now since results aren't reaching the controller
             break;

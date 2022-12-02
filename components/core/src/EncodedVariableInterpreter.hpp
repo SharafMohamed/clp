@@ -89,7 +89,7 @@ public:
      * @return true if successful, false otherwise
      */
     static bool decode_variables_into_message (const LogTypeDictionaryEntry& logtype_dict_entry, const VariableDictionaryReader& var_dict,
-                                               const std::vector<encoded_variable_t>& encoded_vars, std::string& decompressed_msg);
+                                               const std::vector<encoded_variable_t>& encoded_vars, std::string& decompressed_msg, bool use_heuristic);
 
     /**
      * Encodes a string-form variable, and if it is dictionary variable, searches for its ID in the given variable dictionary

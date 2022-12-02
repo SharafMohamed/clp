@@ -64,7 +64,7 @@ static bool open_compressed_file (MetadataDB::FileIterator& file_metadata_ix, Ar
  * @return The total number of matches found across all files
  */
 static size_t search_files (vector<Query>& queries, CommandLineArguments::OutputMethod output_method, Archive& archive,
-                            MetadataDB::FileIterator& file_metadata_ix);
+                            MetadataDB::FileIterator& file_metadata_ix, bool use_heuristic);
 /**
  * Prints search result to stdout in text format
  * @param orig_file_path
@@ -146,7 +146,6 @@ static bool search (const vector<string>& search_strings, CommandLineArguments& 
             Query query;
             if (Grep::process_raw_query(archive, search_string, search_begin_ts, search_end_ts, command_line_args.ignore_case(), query, forward_lexer, 
                                         reverse_lexer, use_heuristic)) {
-            //if (Grep::process_raw_query(archive, search_string, search_begin_ts, search_end_ts, command_line_args.ignore_case(), query, parser)) {
                 no_queries_match = false;
 
                 if (query.contains_sub_queries() == false) {
@@ -174,14 +173,14 @@ static bool search (const vector<string>& search_strings, CommandLineArguments& 
             size_t num_matches;
             if (is_superseding_query) {
                 auto file_metadata_ix = archive.get_file_iterator(search_begin_ts, search_end_ts, command_line_args.get_file_path());
-                num_matches = search_files(queries, command_line_args.get_output_method(), archive, *file_metadata_ix);
+                num_matches = search_files(queries, command_line_args.get_output_method(), archive, *file_metadata_ix, use_heuristic);
             } else {
                 auto file_metadata_ix_ptr = archive.get_file_iterator(search_begin_ts, search_end_ts, command_line_args.get_file_path(), cInvalidSegmentId);
                 auto& file_metadata_ix = *file_metadata_ix_ptr;
-                num_matches = search_files(queries, command_line_args.get_output_method(), archive, file_metadata_ix);
+                num_matches = search_files(queries, command_line_args.get_output_method(), archive, file_metadata_ix, use_heuristic);
                 for (auto segment_id : ids_of_segments_to_search) {
                     file_metadata_ix.set_segment_id(segment_id);
-                    num_matches += search_files(queries, command_line_args.get_output_method(), archive, file_metadata_ix);
+                    num_matches += search_files(queries, command_line_args.get_output_method(), archive, file_metadata_ix, use_heuristic);
                 }
             }
             SPDLOG_DEBUG("# matches found: {}", num_matches);
@@ -218,7 +217,7 @@ static bool open_compressed_file (MetadataDB::FileIterator& file_metadata_ix, Ar
 }
 
 static size_t search_files (vector<Query>& queries, const CommandLineArguments::OutputMethod output_method, Archive& archive,
-                            MetadataDB::FileIterator& file_metadata_ix)
+                            MetadataDB::FileIterator& file_metadata_ix, bool use_heuristic)
 {
     size_t num_matches = 0;
 
@@ -247,7 +246,7 @@ static size_t search_files (vector<Query>& queries, const CommandLineArguments::
 
             for (const auto& query : queries) {
                 archive.reset_file_indices(compressed_file);
-                num_matches += Grep::search_and_output(query, SIZE_MAX, archive, compressed_file, output_func, output_func_arg);
+                num_matches += Grep::search_and_output(query, SIZE_MAX, archive, compressed_file, output_func, output_func_arg, use_heuristic);
             }
         }
         archive.close_file(compressed_file);

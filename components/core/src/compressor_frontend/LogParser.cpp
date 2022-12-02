@@ -119,10 +119,10 @@ namespace compressor_frontend {
     bool LogParser::init (InputBuffer& input_buffer, OutputBuffer& output_buffer) {
         Token next_token = get_next_symbol_new(input_buffer);
         output_buffer.set_value(0, next_token);
-        if (next_token.m_type_ids->at(0) == (int) SymbolID::TokenEndID) {
+        if (next_token.m_type_ids_ptr->at(0) == (int) SymbolID::TokenEndID) {
             return true;
         }
-        if (next_token.m_type_ids->at(0) == (int) SymbolID::TokenFirstTimestampId) {
+        if (next_token.m_type_ids_ptr->at(0) == (int) SymbolID::TokenFirstTimestampId) {
             output_buffer.set_has_timestamp(true);
             output_buffer.set_curr_pos(1);
         } else {
@@ -138,7 +138,7 @@ namespace compressor_frontend {
         if (m_has_start_of_log_message) {
             // switch to timestamped messages if a timestamp is ever found at the start of line (potentially dangerous as it never switches back)
             /// TODO: potentially switch back if a new line is reached and the message is too long (100x static message size)
-            if (m_start_of_log_message.m_type_ids->at(0) == (int) SymbolID::TokenNewlineTimestampId) {
+            if (m_start_of_log_message.m_type_ids_ptr->at(0) == (int) SymbolID::TokenNewlineTimestampId) {
                 output_buffer.set_has_timestamp(true);
             }
             if (output_buffer.get_has_timestamp()) {
@@ -154,7 +154,7 @@ namespace compressor_frontend {
         while (true) {
             Token next_token = get_next_symbol_new(input_buffer);
             output_buffer.set_curr_value(next_token);
-            int token_type = next_token.m_type_ids->at(0);
+            int token_type = next_token.m_type_ids_ptr->at(0);
             bool found_start_of_next_message = (output_buffer.get_has_timestamp() && token_type == (int) SymbolID::TokenNewlineTimestampId) ||
                                                (!output_buffer.get_has_timestamp() && next_token.get_char(0) == '\n' &&
                                                 token_type != (int) SymbolID::TokenNewlineId);
@@ -175,7 +175,7 @@ namespace compressor_frontend {
                 // make the last token of the current message the '\n' character
                 Token curr_token = output_buffer.get_curr_value();
                 curr_token.m_end_pos = curr_token.m_start_pos + 1;
-                curr_token.m_type_ids = &Lexer<RegexNFAByteState, RegexDFAByteState>::cTokenUncaughtStringTypes;
+                curr_token.m_type_ids_ptr = &Lexer<RegexNFAByteState, RegexDFAByteState>::cTokenUncaughtStringTypes;
                 output_buffer.set_curr_value(curr_token);
                 input_buffer.set_consumed_pos(m_start_of_log_message.m_start_pos - 1);
                 m_has_start_of_log_message = true;

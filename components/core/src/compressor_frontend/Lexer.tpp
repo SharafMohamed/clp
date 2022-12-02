@@ -151,100 +151,70 @@ namespace compressor_frontend {
         }
     }
 
-    /// TODO: this is duplicating almost all the code of scan()
     template <typename NFAStateType, typename DFAStateType>
     Token Lexer<NFAStateType, DFAStateType>::scan_with_wildcard (char wildcard) {
-        if (m_match) {
-            m_match = false;
-            m_last_match_pos = m_match_pos;
-            m_last_match_line = m_match_line;
-            return Token{m_start_pos, m_match_pos,  m_static_byte_buf, m_current_buff_size, m_match_line, m_type_ids};
+        if (!m_finished_reading_file) {
+            throw(std::runtime_error("Super long query not allowed"));
         }
-        m_start_pos = m_byte_buf_pos;
-        m_match_pos = m_byte_buf_pos;
-        m_match_line = m_line;
-        m_type_ids = nullptr;
         DFAStateType* state = m_dfa->get_root();
         while (true) {
-            if (m_byte_buf_pos == m_fail_pos) {
-                SPDLOG_ERROR("Query too long");
-                string err = "Lexer failed to find a match after checking entire buffer";
-                err += " at line " + to_string(m_line);
-                err += " in file " + dynamic_cast<FileReader*>(m_reader)->get_path();
-                dynamic_cast<FileReader*>(m_reader)->close();
-                throw (err); // this throw allows for continuation of compressing other files
+            if (state == nullptr) {
+                // No path to a variable
+                m_type_ids_set.insert(cTokenUncaughtStringTypes.at(0));
+                return Token{m_last_match_pos, m_byte_buf_pos, m_static_byte_buf, m_current_buff_size, m_last_match_line, m_type_ids_set};
             }
-            uint32_t prev_byte_buf_pos = m_byte_buf_pos;
             unsigned char next_char = get_next_character();
-            if ((m_is_delimiter[next_char] || m_at_end_of_file || !m_has_delimiters) && state->is_accepting()) {
-                m_match = true;
-                m_type_ids = &(state->get_tags());
-                m_match_pos = prev_byte_buf_pos;
-                m_match_line = m_line;
+            if (m_at_end_of_file) {
+                break;
             }
-            DFAStateType* next = state->next(next_char);
-            if (next_char == '\n') {
-                m_line++;
-                if (m_has_delimiters && !m_match) {
-                    next = m_dfa->get_root()->next(next_char);
-                    m_match = true;
-                    m_type_ids = &(next->get_tags());
-                    m_start_pos = prev_byte_buf_pos;
-                    m_match_pos = m_byte_buf_pos;
-                    m_match_line = m_line;
+            state = state->next(next_char);
+        }
+
+        // BFS (keep track of m_type_ids_set)
+        if (state->is_accepting() == false) {
+            m_type_ids_set.insert(cTokenUncaughtStringTypes.at(0));
+        } else {
+            m_type_ids_set.insert(state->get_highest_priority_tag(m_reversed));
+        }
+        if (wildcard == '?') {
+            for (uint32_t byte = 0; byte < cSizeOfByte; byte++) {
+                if(is_delimiter(byte)) {
+                    continue;
+                }
+                DFAStateType* current_state = state->next(byte);
+                if (current_state == nullptr || current_state->is_accepting() == false) {
+                    m_type_ids_set.insert(cTokenUncaughtStringTypes.at(0));
+                } else {
+                    m_type_ids_set.insert(current_state->get_highest_priority_tag(m_reversed));
                 }
             }
-
-            // !m_at_end_of_file should be impossible
-            // m_match_pos != m_byte_buf_pos --> "te matches from "tes*" (means "tes" isn't a match, so is_var = false)
-            //
-            if (m_at_end_of_file || next == nullptr) {
-                assert(m_at_end_of_file);
-
-                if (!m_match || (m_match && m_match_pos != m_byte_buf_pos)) {
-                    return Token{m_last_match_pos, m_byte_buf_pos, m_static_byte_buf, m_current_buff_size, m_last_match_line, &cTokenUncaughtStringTypes};
+        } else if (wildcard == '*') {
+            std::stack<DFAStateType*> unvisited_states;
+            std::set<DFAStateType*> visited_states;
+            unvisited_states.push(state);
+            while (!unvisited_states.empty()) {
+                DFAStateType* current_state = unvisited_states.top();
+                unvisited_states.pop();
+                if (current_state == nullptr || current_state->is_accepting() == false) {
+                    m_type_ids_set.insert(cTokenUncaughtStringTypes.at(0));
+                } else {
+                    m_type_ids_set.insert(current_state->get_highest_priority_tag(m_reversed));
                 }
-                if (m_match) {
-                    // BFS (keep track of m_type_ids)
-                    if (wildcard == '?') {
-                        for (uint32_t byte = 0; byte < cSizeOfByte; byte++) {
-                            DFAStateType* next_state = state->next(byte);
-                            if (next_state->is_accepting() == false) {
-                                return Token{m_last_match_pos, m_byte_buf_pos, m_static_byte_buf, m_current_buff_size, m_last_match_line, &cTokenUncaughtStringTypes};
-                            }
+                if (current_state != nullptr) {
+                    visited_states.insert(current_state);
+                    for (uint32_t byte = 0; byte < cSizeOfByte; byte++) {
+                        if(is_delimiter(byte)) {
+                            continue;
                         }
-                    } else if (wildcard == '*') {
-                        std::stack<DFAStateType*> unvisited_states;
-                        std::set<DFAStateType*> visited_states;
-                        unvisited_states.push(state);
-                        while (!unvisited_states.empty()) {
-                            DFAStateType* current_state = unvisited_states.top();
-                            if (current_state == nullptr || current_state->is_accepting() == false) {
-                                return Token{m_last_match_pos, m_byte_buf_pos, m_static_byte_buf, m_current_buff_size, m_last_match_line, &cTokenUncaughtStringTypes};
-                            }
-                            unvisited_states.pop();
-                            visited_states.insert(current_state);
-                            for (uint32_t byte = 0; byte < cSizeOfByte; byte++) {
-                                if (m_is_delimiter[byte]) {
-                                    continue;
-                                }
-                                DFAStateType* next_state = current_state->next(byte);
-                                if (visited_states.find(next_state) == visited_states.end()) {
-                                    unvisited_states.push(next_state);
-                                }
-                            }
+                        DFAStateType* next_state = current_state->next(byte);
+                        if (next_state != nullptr && visited_states.find(next_state) == visited_states.end()) {
+                            unvisited_states.push(next_state);
                         }
                     }
-                    m_byte_buf_pos = m_match_pos;
-                    m_line = m_match_line;
-                    m_match = false;
-                    m_last_match_pos = m_match_pos;
-                    m_last_match_line = m_match_line;
-                    return Token{m_start_pos, m_match_pos, m_static_byte_buf, m_current_buff_size, m_match_line, m_type_ids};
                 }
             }
-            state = next;
         }
+        return Token{m_start_pos, m_match_pos, m_static_byte_buf, m_current_buff_size, m_match_line, m_type_ids_set};
     }
 
 
@@ -272,6 +242,7 @@ namespace compressor_frontend {
         m_match_line = 0;
         m_last_match_line = 0;
         m_type_ids = nullptr;
+        m_type_ids_set.clear();
     }
 
 
@@ -438,7 +409,7 @@ namespace compressor_frontend {
                                  input_buffer.get_curr_storage_size(), m_last_match_line, &cTokenUncaughtStringTypes};
                 }
                 if (m_match) {
-                    // BFS (keep track of m_type_ids)
+                    // BFS (keep track of m_type_ids_ptr)
                     if (wildcard == '?') {
                         for (uint32_t byte = 0; byte < cSizeOfByte; byte++) {
                             DFAStateType* next_state = state->next(byte);
@@ -561,6 +532,7 @@ namespace compressor_frontend {
                 m_is_first_char[i] = false;
             }
         }
+        m_reversed = true;
     }
 
     template <typename NFAStateType, typename DFAStateType>

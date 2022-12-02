@@ -200,6 +200,7 @@ namespace compressor_frontend {
         uint32_t m_last_match_line;
         bool m_match;
         const std::vector<int>* m_type_ids;
+        std::set<int> m_type_ids_set;
         bool m_is_delimiter[cSizeOfByte];
         bool m_is_first_char[cSizeOfByte];
         static uint32_t m_current_buff_size;
@@ -216,6 +217,7 @@ namespace compressor_frontend {
         unique_ptr<RegexDFA<DFAStateType>> m_dfa;
         bool m_asked_for_more_data;
         DFAStateType* m_prev_state;
+        bool m_reversed = false;
     };
 
     namespace lexers {

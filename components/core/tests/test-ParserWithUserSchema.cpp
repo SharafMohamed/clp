@@ -134,9 +134,9 @@ TEST_CASE("Test forward lexer", "[Search]") {
     reader.open("../tests/test_search_queries/easy.txt");
     forward_lexer.reset(reader);
     Token token = forward_lexer.scan();
-    while (token.m_type_ids->at(0) != (int)compressor_frontend::SymbolID::TokenEndID) {
+    while (token.m_type_ids_ptr->at(0) != (int)compressor_frontend::SymbolID::TokenEndID) {
         SPDLOG_INFO("token:" + token.get_string() + "\n");
-        SPDLOG_INFO("token.m_type_ids->back():" + forward_lexer.m_id_symbol[token.m_type_ids->back()] + "\n");
+        SPDLOG_INFO("token.m_type_ids_ptr->back():" + forward_lexer.m_id_symbol[token.m_type_ids_ptr->back()] + "\n");
         token = forward_lexer.scan();
     }
 }
@@ -150,9 +150,9 @@ TEST_CASE("Test reverse lexer", "[Search]") {
     reader.open("../tests/test_search_queries/easy.txt");
     reverse_lexer.reset(reader);
     Token token = reverse_lexer.scan();
-    while (token.m_type_ids->at(0) != (int)compressor_frontend::SymbolID::TokenEndID) {
+    while (token.m_type_ids_ptr->at(0) != (int)compressor_frontend::SymbolID::TokenEndID) {
         SPDLOG_INFO("token:" + token.get_string() + "\n");
-        SPDLOG_INFO("token.m_type_ids->back():" + reverse_lexer.m_id_symbol[token.m_type_ids->back()] + "\n");
+        SPDLOG_INFO("token.m_type_ids_ptr->back():" + reverse_lexer.m_id_symbol[token.m_type_ids_ptr->back()] + "\n");
         token = reverse_lexer.scan();
     }
 }

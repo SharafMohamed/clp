@@ -235,7 +235,7 @@ void EncodedVariableInterpreter::encode_and_add_to_dictionary (const string& mes
 }
 
 bool EncodedVariableInterpreter::decode_variables_into_message (const LogTypeDictionaryEntry& logtype_dict_entry, const VariableDictionaryReader& var_dict,
-                                                                const vector<encoded_variable_t>& encoded_vars, string& decompressed_msg)
+                                                                const vector<encoded_variable_t>& encoded_vars, string& decompressed_msg, bool use_heuristic)
 {
     size_t num_vars_in_logtype = logtype_dict_entry.get_num_vars();
 
@@ -248,14 +248,16 @@ bool EncodedVariableInterpreter::decode_variables_into_message (const LogTypeDic
     }
 
     LogTypeDictionaryEntry::VarDelim var_delim;
+    char schema_id;
     size_t constant_begin_pos = 0;
     string double_str;
     for (size_t i = 0; i < num_vars_in_logtype; ++i) {
-        size_t var_position = logtype_dict_entry.get_var_info(i, var_delim);
+        size_t var_position = logtype_dict_entry.get_var_info(i, var_delim, schema_id);
 
         // Add the constant that's between the last variable and this one
         decompressed_msg.append(logtype_value, constant_begin_pos, var_position - constant_begin_pos);
 
+        uint8_t delim_len = 1;
         if (LogTypeDictionaryEntry::VarDelim::NonDouble == var_delim) {
             if (!is_var_dict_id(encoded_vars[i])) {
                 decompressed_msg += std::to_string(encoded_vars[i]);
@@ -263,13 +265,17 @@ bool EncodedVariableInterpreter::decode_variables_into_message (const LogTypeDic
                 auto var_dict_id = decode_var_dict_id(encoded_vars[i]);
                 decompressed_msg += var_dict.get_value(var_dict_id);
             }
+            if (use_heuristic == false) {
+                /// TODO: if two level-dictionary change var_dict.get_value(var_dict_id) to use schema_id
+                delim_len += 1;
+            }
         } else { // LogTypeDictionaryEntry::VarDelim::Double == var_delim
             convert_encoded_double_to_string(encoded_vars[i], double_str);
 
             decompressed_msg += double_str;
         }
         // Move past the variable delimiter
-        constant_begin_pos = var_position + 1;
+        constant_begin_pos = var_position + delim_len;
     }
     // Append remainder of logtype, if any
     if (constant_begin_pos < logtype_value.length()) {

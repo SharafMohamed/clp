@@ -291,7 +291,7 @@ TEST_CASE("EncodedVariableInterpreter", "[EncodedVariableInterpreter]") {
 
         // Test decoding
         string decompressed_msg;
-        REQUIRE(EncodedVariableInterpreter::decode_variables_into_message(logtype_dict_entry, var_dict_reader, encoded_vars, decompressed_msg));
+        REQUIRE(EncodedVariableInterpreter::decode_variables_into_message(logtype_dict_entry, var_dict_reader, encoded_vars, decompressed_msg, true));
         REQUIRE(msg == decompressed_msg);
 
         var_dict_reader.close();
