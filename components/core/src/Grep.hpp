@@ -62,7 +62,8 @@ public:
      */
     static bool get_bounds_of_next_potential_var (const std::string& value, size_t& begin_pos, size_t& end_pos, bool& is_var,
                                                   std::set<int>& schema_types, compressor_frontend::lexers::ByteLexer& forward_lexer,
-                                                  compressor_frontend::lexers::ByteLexer& reverse_lexer);
+                                                  compressor_frontend::lexers::ByteLexer& reverse_lexer, std::string& post_processed_string,
+                                                  bool& is_typed, size_t& typed_begin_pos, size_t& typed_end_pos);
     
     /**
      * Marks which sub-queries in each query are relevant to the given file

@@ -1,5 +1,5 @@
-#ifndef COMPRESSOR_FRONTEND_LOGPARSER_HPP
-#define COMPRESSOR_FRONTEND_LOGPARSER_HPP
+#ifndef COMPRESSOR_FRONTEND_LOG_PARSER_HPP
+#define COMPRESSOR_FRONTEND_LOG_PARSER_HPP
 
 // C++ standard libraries
 #include <cassert>
@@ -86,4 +86,4 @@ namespace compressor_frontend {
     };
 }
 
-#endif // COMPRESSOR_FRONTEND_LOGPARSER_HPP
+#endif // COMPRESSOR_FRONTEND_LOG_PARSER_HPP

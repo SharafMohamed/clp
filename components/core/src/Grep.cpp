@@ -417,12 +417,6 @@ bool Grep::process_raw_query (const Archive& archive, const string& search_strin
 
     // Clean-up search string
     string processed_search_string = clean_up_wildcard_search_string(search_string);
-    query.set_search_string(processed_search_string);
-
-    // Replace non-greedy wildcards with greedy wildcards since we currently have no support for searching compressed files with non-greedy wildcards
-    std::replace(processed_search_string.begin(), processed_search_string.end(), '?', '*');
-    // Clean-up in case any instances of "?*" or "*?" were changed into "**"
-    processed_search_string = clean_up_wildcard_search_string(processed_search_string);
 
     // Split search_string into tokens with wildcards
     vector<QueryToken> query_tokens;
@@ -430,14 +424,27 @@ bool Grep::process_raw_query (const Archive& archive, const string& search_strin
     size_t end_pos = 0;
     bool is_var;
     if (use_heuristic) {
+        query.set_search_string(processed_search_string);
+        // Replace non-greedy wildcards with greedy wildcards since we currently have no support for searching compressed files with non-greedy wildcards
+        std::replace(processed_search_string.begin(), processed_search_string.end(), '?', '*');
+        // Clean-up in case any instances of "?*" or "*?" were changed into "**"
+        processed_search_string = clean_up_wildcard_search_string(processed_search_string);
         while (get_bounds_of_next_potential_var(processed_search_string, begin_pos, end_pos, is_var)) {
             query_tokens.emplace_back(processed_search_string, begin_pos, end_pos, is_var);
         }
     } else {
         std::set<int> schema_types;
-        while (get_bounds_of_next_potential_var(processed_search_string, begin_pos, end_pos, is_var, schema_types, forward_lexer, reverse_lexer)) {
-            query_tokens.emplace_back(processed_search_string, begin_pos, end_pos, is_var, schema_types);
+        std::string post_processed_search_string;
+        post_processed_search_string.reserve(processed_search_string.size());
+        bool is_typed;
+        size_t typed_begin_pos;
+        size_t typed_end_pos;
+        while (get_bounds_of_next_potential_var(processed_search_string, begin_pos, end_pos, is_var, schema_types, forward_lexer, reverse_lexer,
+                                                post_processed_search_string, is_typed, typed_begin_pos, typed_end_pos)) {
+            query_tokens.emplace_back(post_processed_search_string, typed_begin_pos, typed_end_pos, is_var, schema_types);
         }
+        processed_search_string = post_processed_search_string;
+        query.set_search_string(processed_search_string);
     }
 
     // Get pointers to all ambiguous tokens. Exclude tokens with wildcards in the middle since we fall-back to decompression + wildcard matching for those.
@@ -604,9 +611,9 @@ bool Grep::get_bounds_of_next_potential_var (const string& value, size_t& begin_
     return (value_length != begin_pos);
 }
 
-bool
-Grep::get_bounds_of_next_potential_var (const string& value, size_t& begin_pos, size_t& end_pos, bool& is_var, std::set<int>& schema_types,
-                                        compressor_frontend::lexers::ByteLexer& forward_lexer, compressor_frontend::lexers::ByteLexer& reverse_lexer) {
+bool Grep::get_bounds_of_next_potential_var (const string& value, size_t& begin_pos, size_t& end_pos, bool& is_var, std::set<int>& schema_types,
+                                             compressor_frontend::lexers::ByteLexer& forward_lexer, compressor_frontend::lexers::ByteLexer& reverse_lexer,
+                                             string& post_processed_value, bool& is_typed, size_t& typed_begin_pos, size_t& typed_end_pos) {
     const size_t value_length = value.length();
     if (end_pos >= value_length) {
         return false;
@@ -620,6 +627,7 @@ Grep::get_bounds_of_next_potential_var (const string& value, size_t& begin_pos, 
 
         // Find variable begin or wildcard
         bool is_escaped = false;
+        is_typed = false;
         for (; begin_pos < value_length; ++begin_pos) {
             char c = value[begin_pos];
 
@@ -629,6 +637,7 @@ Grep::get_bounds_of_next_potential_var (const string& value, size_t& begin_pos, 
                 if(false == forward_lexer.is_delimiter(c)) {
                     // Found escaped non-delimiter, so reverse the index to retain the escape character
                     --begin_pos;
+                    --typed_begin_pos;
                     break;
                 }
             } else if ('\\' == c) {
@@ -639,15 +648,22 @@ Grep::get_bounds_of_next_potential_var (const string& value, size_t& begin_pos, 
                     contains_wildcard = true;
                     break;
                 }
-                if (false == forward_lexer.is_delimiter(c)) {
+                if (c == '<') {
+                    is_typed = true;
+                    break;
+                } else if (false == forward_lexer.is_delimiter(c)) {
                     break;
                 }
             }
+            post_processed_value.push_back(c);
+            typed_begin_pos = post_processed_value.size();
         }
 
         // Find next delimiter
         is_escaped = false;
         end_pos = begin_pos;
+        uint32_t first_colon_pos = 0;
+        uint32_t first_r_angle_pos = 0;
         for (; end_pos < value_length; ++end_pos) {
             char c = value[end_pos];
 
@@ -657,12 +673,22 @@ Grep::get_bounds_of_next_potential_var (const string& value, size_t& begin_pos, 
                 if (forward_lexer.is_delimiter(c)) {
                     // Found escaped delimiter, so reverse the index to retain the escape character
                     --end_pos;
+                    --typed_end_pos;
                     break;
                 }
             } else if ('\\' == c) {
                 // Escape character
                 is_escaped = true;
             } else {
+                if (c == ':' && first_colon_pos == 0) {
+                    first_colon_pos = end_pos;
+                    continue;
+                }
+
+                if (c == '>' && first_r_angle_pos == 0) {
+                    first_r_angle_pos = end_pos;
+                    continue;
+                }
                 if (is_wildcard(c)) {
                     contains_wildcard = true;
                 } else if (forward_lexer.is_delimiter(c)) {
@@ -670,6 +696,38 @@ Grep::get_bounds_of_next_potential_var (const string& value, size_t& begin_pos, 
                     break;
                 }
             }
+            if(is_typed == false || first_colon_pos != 0) {
+                post_processed_value.push_back(c);
+                typed_end_pos = post_processed_value.size();
+            }
+        }
+
+        if(is_typed) {
+            if(first_colon_pos == 0) {
+                throw(std::runtime_error("Error: typed expression <type:value> in search_query missing ':'."));
+            }
+            if(first_r_angle_pos == 0) {
+                throw(std::runtime_error("Error: typed expression <type:value> in search_query missing '>' or contains delimiters."));
+            }
+            if(first_r_angle_pos != end_pos - 1) {
+                throw(std::runtime_error("Error: typed expression <type:value> in search_query must be followed by a delimiter."));
+            }
+        }
+
+        int type_id;
+        std::string type_symbol;
+        std::string type_value;
+        if (is_typed) {
+            type_symbol = value.substr(begin_pos + 1, first_colon_pos - begin_pos - 1);
+            type_value = value.substr(first_colon_pos + 1, first_r_angle_pos - first_colon_pos - 1);
+            auto type_it = forward_lexer.m_symbol_id.find(type_symbol);
+            if(type_it == forward_lexer.m_symbol_id.end()) {
+                throw(std::runtime_error("Error: type expression <type:value> with type " + type_symbol + " not in schema."));
+            }
+            type_id = type_it->second;
+
+            begin_pos = first_colon_pos + 1;
+            end_pos--;
         }
 
         if (end_pos > begin_pos) {
@@ -686,12 +744,12 @@ Grep::get_bounds_of_next_potential_var (const string& value, size_t& begin_pos, 
             if (has_wildcard_in_middle || (has_prefix_wildcard && has_suffix_wildcard)) {
                 // DO NOTHING
             } else {
-                if (has_suffix_wildcard) { //asdsas*
+                if (has_suffix_wildcard) { //text*
                     StringReader stringReader;
                     stringReader.open(value.substr(begin_pos, end_pos - begin_pos - 1));
                     forward_lexer.reset(stringReader);
                     token = forward_lexer.scan_with_wildcard(value[end_pos - 1]);
-                } else if (has_prefix_wildcard) { // *asdas
+                } else if (has_prefix_wildcard) { // *text
                     std::string value_reverse = value.substr(begin_pos + 1, end_pos - begin_pos - 1);
                     std::reverse(value_reverse.begin(), value_reverse.end());
                     StringReader stringReader;
@@ -710,7 +768,19 @@ Grep::get_bounds_of_next_potential_var (const string& value, size_t& begin_pos, 
                     is_var = true;
                 }
                 schema_types = token.m_type_ids_set;
+                if (is_typed) {
+                    if(schema_types.find(type_id) != schema_types.end()) {
+                        schema_types.clear();
+                        schema_types.insert(type_id);
+                    } else {
+                        throw(std::runtime_error("Error: type expression <type:value> with value " + type_value + " that can never be type " + type_symbol));
+                    }
+                }
             }
+        }
+
+        if (is_typed) {
+            end_pos++;
         }
     }
     return (value_length != begin_pos);
