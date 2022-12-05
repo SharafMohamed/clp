@@ -680,12 +680,12 @@ bool Grep::get_bounds_of_next_potential_var (const string& value, size_t& begin_
                 // Escape character
                 is_escaped = true;
             } else {
-                if (c == ':' && first_colon_pos == 0) {
+                if (is_typed && c == ':' && first_colon_pos == 0) {
                     first_colon_pos = end_pos;
                     continue;
                 }
 
-                if (c == '>' && first_r_angle_pos == 0) {
+                if (is_typed && c == '>' && first_r_angle_pos == 0) {
                     first_r_angle_pos = end_pos;
                     continue;
                 }
