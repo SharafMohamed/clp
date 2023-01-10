@@ -10,6 +10,7 @@
 #include <spdlog/spdlog.h>
 
 // Project headers
+#include "../../compressor_frontend/LogParser.hpp"
 #include "../../FileWriter.hpp"
 #include "../../LogTypeDictionaryReader.hpp"
 #include "../../VariableDictionaryReader.hpp"
@@ -46,9 +47,12 @@ int main (int argc, const char* argv[]) {
     auto archive_path = boost::filesystem::path(command_line_args.get_archive_path());
     auto schema_file_path = archive_path / streaming_archive::cSchemaFileName;
     bool use_heuristic = true;
+    std::unique_ptr<compressor_frontend::LogParser> log_parser;
     if (boost::filesystem::exists(schema_file_path)) {
         use_heuristic = false;
+        log_parser = std::make_unique<compressor_frontend::LogParser>(schema_file_path.string());
     }
+
 
     FileWriter file_writer;
     FileWriter index_writer;
@@ -83,9 +87,11 @@ int main (int argc, const char* argv[]) {
 
             uint8_t delim_len = 1;
             if (LogTypeDictionaryEntry::VarDelim::NonDouble == var_delim) {
-                human_readable_value += "\\v";
                 if(use_heuristic == false) {
-                    human_readable_value += std::to_string((int)schema_id);
+                    // conver schema_id to schema_type_name
+                    std::string schema_type = "<" + log_parser->get_id_symbol((int)schema_id) + ">";
+                    human_readable_value += schema_type;
+
                     delim_len += std::to_string((int)schema_id).length();
                 }
             } else { // LogTypeDictionaryEntry::VarDelim::Double == var_delim

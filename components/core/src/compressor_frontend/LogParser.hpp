@@ -58,6 +58,10 @@ namespace compressor_frontend {
             m_lexer.flip_states(old_storage_size);
         }
 
+        std::string get_id_symbol(int id) {
+            return m_lexer.m_id_symbol[id];
+        }
+
     private:
         /**
          * Request the next symbol from the lexer

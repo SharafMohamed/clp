@@ -1,4 +1,31 @@
 set(SOURCE_FILES_make-dictionaries-readable
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/compressor_frontend/Buffer.hpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/compressor_frontend/Constants.hpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/compressor_frontend/finite_automata/RegexAST.hpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/compressor_frontend/finite_automata/RegexAST.tpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/compressor_frontend/finite_automata/RegexDFA.hpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/compressor_frontend/finite_automata/RegexDFA.tpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/compressor_frontend/finite_automata/RegexNFA.hpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/compressor_frontend/finite_automata/RegexNFA.tpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/compressor_frontend/finite_automata/UnicodeIntervalTree.hpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/compressor_frontend/finite_automata/UnicodeIntervalTree.tpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/compressor_frontend/InputBuffer.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/compressor_frontend/InputBuffer.hpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/compressor_frontend/LALR1Parser.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/compressor_frontend/LALR1Parser.hpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/compressor_frontend/LALR1Parser.tpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/compressor_frontend/Lexer.hpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/compressor_frontend/Lexer.tpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/compressor_frontend/LogParser.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/ src/compressor_frontend/LogParser.hpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/compressor_frontend/OutputBuffer.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/compressor_frontend/OutputBuffer.hpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/compressor_frontend/SchemaParser.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/compressor_frontend/SchemaParser.hpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/compressor_frontend/Token.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/compressor_frontend/Token.hpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/compressor_frontend/utils.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/compressor_frontend/utils.hpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/dictionary_utils.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/dictionary_utils.hpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/DictionaryEntry.cpp
