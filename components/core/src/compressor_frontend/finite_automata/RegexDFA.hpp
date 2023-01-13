@@ -24,8 +24,20 @@ namespace compressor_frontend::finite_automata {
     public:
         using Tree = UnicodeIntervalTree<RegexDFAState<stateType>*>;
 
+        /// TODO: should m_tags be an ordered set instead of a vector (I think its too small to ever be a performance issue)
+        // Needs to keep the listed sorted so m_tags[0] is the first rule listed in the schema file (the highest priority)
         void add_tag (const int& rule_name_id) {
-            m_tags.push_back(rule_name_id);
+            uint32_t pos = m_tags.size();
+            for (uint32_t i = 0; i < m_tags.size(); i++) {
+                if (m_tags[i] == rule_name_id) {
+                    return;
+                }
+                if (m_tags[i] > rule_name_id) {
+                    pos = i;
+                    break;
+                }
+            }
+            m_tags.insert(m_tags.begin() + pos, rule_name_id);
         }
 
         [[nodiscard]] const std::vector<int>& get_tags () const {
