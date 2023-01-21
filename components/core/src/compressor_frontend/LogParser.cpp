@@ -49,8 +49,6 @@ namespace compressor_frontend {
         for (unique_ptr<ParserAST> const& parser_ast: schema_ast->m_schema_vars) {
             auto rule = dynamic_cast<SchemaVarAST*>(parser_ast.get());
 
-            // transform '.' from any-character into any non-delimiter character
-            rule->m_regex_ptr->remove_delimiters_from_wildcard(delimiters);
 
             if (rule->m_name == "timestamp") {
                 unique_ptr<RegexAST<RegexNFAByteState>> first_timestamp_regex_ast(rule->m_regex_ptr->clone());
@@ -61,6 +59,10 @@ namespace compressor_frontend {
                 // prevent timestamps from going into the dictionary
                 continue;
             }
+
+            // transform '.' from any-character into any non-delimiter character
+            rule->m_regex_ptr->remove_delimiters_from_wildcard(delimiters);
+
             // currently, error out if non-timestamp pattern contains a delimiter
             // check if regex contains a delimiter
             bool is_possible_input[cUnicodeMax] = {false};

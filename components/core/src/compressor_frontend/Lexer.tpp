@@ -336,7 +336,8 @@ namespace compressor_frontend {
                     return Token{input_buffer.get_curr_pos(), input_buffer.get_curr_pos(),  input_buffer.get_active_buffer(),
                                  input_buffer.get_curr_storage_size(), m_line, &cTokenEndTypes};
                 } else {
-                    while (input_buffer.get_at_end_of_file() == false && m_is_first_char[next_char] == false) {
+                    /// TODO: remove timestamp from m_is_fist_char so that m_is_delimiter check not needed
+                    while (input_buffer.get_at_end_of_file() == false && (m_is_first_char[next_char] == false | m_is_delimiter[next_char] == false)) {
                         if (input_buffer.about_to_overflow()) {
                             m_asked_for_more_data = true;
                             m_prev_state = state;

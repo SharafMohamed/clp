@@ -93,6 +93,8 @@ int main (int argc, const char* argv[]) {
                     human_readable_value += schema_type;
 
                     delim_len += std::to_string((int)schema_id).length();
+                } else {
+                    human_readable_value += "\\v";
                 }
             } else { // LogTypeDictionaryEntry::VarDelim::Double == var_delim
                 human_readable_value += "\\f";
