@@ -361,6 +361,17 @@ namespace streaming_archive::writer {
                     m_logtype_dict_entry.add_constant(token.get_string(), 0, token.get_length());
                     break;
                 }
+                case (int) compressor_frontend::SymbolID::TokenHexId: {
+                    encoded_variable_t encoded_var;
+                    if (!EncodedVariableInterpreter::convert_string_to_representable_hex_var(token.get_string(), encoded_var)) {
+                        variable_dictionary_id_t id;
+                        m_var_dict.add_entry(token.get_string(), id);
+                        encoded_var = EncodedVariableInterpreter::encode_var_dict_id(id);
+                    }
+                    m_logtype_dict_entry.add_non_double_schema_var((int) compressor_frontend::SymbolID::TokenHexId);
+                    m_encoded_vars.push_back(encoded_var);
+                    break;
+                }
                 case (int) compressor_frontend::SymbolID::TokenIntId: {
                     encoded_variable_t encoded_var;
                     if (!EncodedVariableInterpreter::convert_string_to_representable_integer_var(token.get_string(), encoded_var)) {

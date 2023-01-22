@@ -72,6 +72,25 @@ string clean_up_wildcard_search_string (const string& str) {
     return cleaned_str;
 }
 
+bool convert_string_to_hex (const std::string& raw, int64_t& converted) {
+    if (raw.empty()) {
+        // Can't convert an empty string
+        return false;
+    }
+
+    const char* c_str = raw.c_str();
+    char* endptr;
+    // Reset errno so we can detect if it's been set
+    errno = 0;
+    int64_t raw_as_int = strtoll(c_str, &endptr, 10);
+    if (endptr - c_str != raw.length() || (LLONG_MAX == raw_as_int && ERANGE == errno)) {
+        // Conversion failed
+        return false;
+    }
+    converted = raw_as_int;
+    return true;
+}
+
 bool convert_string_to_int64 (const std::string& raw, int64_t& converted) {
     if (raw.empty()) {
         // Can't convert an empty string

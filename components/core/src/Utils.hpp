@@ -84,6 +84,14 @@ bool is_wildcard (char c);
 std::string clean_up_wildcard_search_string (const std::string& str);
 
 /**
+ * Converts the given string to a 64-bit hex if possible
+ * @param raw
+ * @param converted
+ * @return true if the conversion was successful, false otherwise
+ */
+bool convert_string_to_hex (const std::string& raw, int64_t& converted);
+
+/**
  * Converts the given string to a 64-bit integer if possible
  * @param raw
  * @param converted

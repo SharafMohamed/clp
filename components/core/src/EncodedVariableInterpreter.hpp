@@ -46,6 +46,13 @@ public:
     static encoded_variable_t encode_var_dict_id (variable_dictionary_id_t id);
     static variable_dictionary_id_t decode_var_dict_id (encoded_variable_t encoded_var);
     /**
+     * Converts the given string into a representable hex variable if possible
+     * @param value
+     * @param encoded_var
+     * @return true if was successfully converted, false otherwise
+     */
+    static bool convert_string_to_representable_hex_var (const std::string& value, encoded_variable_t& encoded_var);
+    /**
      * Converts the given string into a representable integer variable if possible
      * @param value
      * @param encoded_var
