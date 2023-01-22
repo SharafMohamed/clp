@@ -76,7 +76,9 @@ namespace compressor_frontend {
                     break;
                 }
             }
-            if (contains_delimiter) {
+
+            bool delimiters_not_allowed = false;
+            if (delimiters_not_allowed && contains_delimiter) {
                 FileReader schema_reader;
                 ErrorCode error_code = schema_reader.try_open(schema_ast->m_file_path);
                 if (ErrorCode_Success != error_code) {
