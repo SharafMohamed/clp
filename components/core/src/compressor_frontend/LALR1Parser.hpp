@@ -275,6 +275,9 @@ namespace compressor_frontend {
         [[nodiscard]] streaming_archive::writer::Archive* get_archive_writer_ptr () const {
             return m_archive_writer_ptr;
         }
+
+        /// TODO: make this back protected (exposed for 2-level dict)
+        Lexer<NFAStateType, DFAStateType> m_lexer;
         
     protected:
         /**
@@ -290,7 +293,6 @@ namespace compressor_frontend {
          */
         std::string report_error (ReaderInterface& reader);
 
-        Lexer<NFAStateType, DFAStateType> m_lexer;
         streaming_archive::writer::Archive* m_archive_writer_ptr;
         std::stack<MatchedSymbol> m_parse_stack_matches;
         std::stack<ItemSet*> m_parse_stack_states;

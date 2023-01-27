@@ -2,6 +2,7 @@
 #define STREAMING_ARCHIVE_WRITER_ARCHIVE_HPP
 
 // C++ libraries
+#include <map>
 #include <memory>
 #include <set>
 #include <string>
@@ -78,11 +79,12 @@ namespace streaming_archive { namespace writer {
         /**
          * Creates the directory structure for the archive and opens writers for the dictionaries
          * @param user_config Settings configurable by the user
+         * @param m_id_symbol List of variable types
          * @throw FileWriter::OperationFailed if any dictionary writer could not be opened
          * @throw streaming_archive::writer::Archive::OperationFailed if archive already exists, if it could not be stat-ed, if the directory structure could
                   not be created, if the file is not reset or problems with medatadata.
          */
-        void open (const UserConfig& user_config);
+        void open (const UserConfig& user_config, std::map<uint32_t, std::string> m_id_symbol);
         /**
          * Writes a final snapshot of the archive, closes all open files, and closes the dictionaries
          * @throw FileWriter::OperationFailed if any writer could not be closed
@@ -162,7 +164,7 @@ namespace streaming_archive { namespace writer {
         const boost::uuids::uuid& get_id () const { return m_id; }
         const std::string& get_id_as_string () const { return m_id_as_string; }
 
-        size_t get_data_size_of_dictionaries () const { return m_logtype_dict.get_data_size() + m_var_dict.get_data_size(); }
+        size_t get_data_size_of_dictionaries (int var_id) const { return m_logtype_dict.get_data_size() + m_var_dict_ptrs[var_id]->get_data_size(); }
 
     private:
         // Types
@@ -265,7 +267,9 @@ namespace streaming_archive { namespace writer {
         LogTypeDictionaryEntry m_logtype_dict_entry;
         std::vector<encoded_variable_t> m_encoded_vars;
         std::vector<variable_dictionary_id_t> m_var_ids;
-        VariableDictionaryWriter m_var_dict;
+        std::vector<VariableDictionaryWriter*> m_var_dict_ptrs;
+        /// TODO: do this better (make VariableDictionaryWriter more compatible with vectors)
+        VariableDictionaryWriter m_var_dict_supply[100];
 
         boost::uuids::random_generator m_uuid_generator;
 

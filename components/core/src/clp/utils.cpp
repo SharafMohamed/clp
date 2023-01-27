@@ -189,7 +189,9 @@ namespace clp {
         archive_writer.close();
         archive_user_config.id = boost::uuids::random_generator()();
         ++archive_user_config.creation_num;
-        archive_writer.open(archive_user_config);
+        /// TODO: fix this to use m_symbol_id
+        exit(1); // archive_writer.open(archive_user_config);
+
     }
 
     void split_file (const string& path_for_compression, group_id_t group_id, const TimestampPattern* last_timestamp_pattern,

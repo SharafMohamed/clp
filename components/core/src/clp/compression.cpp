@@ -103,7 +103,13 @@ namespace clp {
             archive_writer.m_schema_file_path = command_line_args.get_schema_file_path();
         }
         // Open archive
-        archive_writer.open(archive_user_config);
+        if(use_heuristic) {
+            std::map<uint32_t, std::string> m_id_symbol;
+            m_id_symbol[0] = "heuristic";
+            archive_writer.open(archive_user_config, m_id_symbol);
+        } else {
+            archive_writer.open(archive_user_config, log_parser->m_lexer.m_id_symbol);
+        }
 
         archive_writer.add_empty_directories(empty_directory_paths);
 
@@ -119,7 +125,8 @@ namespace clp {
         }
         sort(files_to_compress.begin(), files_to_compress.end(), file_lt_last_write_time_comparator);
         for (auto rit = files_to_compress.crbegin(); rit != files_to_compress.crend(); ++rit) {
-            if (archive_writer.get_data_size_of_dictionaries() >= target_data_size_of_dictionaries) {
+            /// TODO: fix this to multi-level dict
+            if (archive_writer.get_data_size_of_dictionaries(0) >= target_data_size_of_dictionaries) {
                 split_archive(archive_user_config, archive_writer);
             }
             if (false == file_compressor.compress_file(target_data_size_of_dictionaries, archive_user_config,
@@ -136,7 +143,8 @@ namespace clp {
         sort(grouped_files_to_compress.begin(), grouped_files_to_compress.end(), file_group_id_comparator);
         // Compress grouped files
         for (const auto& file_to_compress: grouped_files_to_compress) {
-            if (archive_writer.get_data_size_of_dictionaries() >= target_data_size_of_dictionaries) {
+            /// TODO: fix this to multi-level dict
+            if (archive_writer.get_data_size_of_dictionaries(0) >= target_data_size_of_dictionaries) {
                 split_archive(archive_user_config, archive_writer);
             }
             if (false == file_compressor.compress_file(target_data_size_of_dictionaries, archive_user_config,

@@ -49,7 +49,7 @@ namespace streaming_archive::writer {
         }
     }
 
-    void Archive::open (const UserConfig& user_config) {
+    void Archive::open (const UserConfig& user_config, std::map<uint32_t, std::string> m_id_symbol) {
         int retval;
 
         m_id = user_config.id;
@@ -177,8 +177,12 @@ namespace streaming_archive::writer {
         // Open variable dictionary
         string var_dict_path = archive_path_string + '/' + cVarDictFilename;
         string var_dict_segment_index_path = archive_path_string + '/' + cVarSegmentIndexFilename;
-        m_var_dict.open(var_dict_path, var_dict_segment_index_path,
-                        EncodedVariableInterpreter::get_var_dict_id_range_end() - EncodedVariableInterpreter::get_var_dict_id_range_begin());
+        for(uint32_t i = 2; i < m_id_symbol.size(); i++) {
+
+            m_var_dict_supply[i].open(var_dict_path + "_" + m_id_symbol[i], var_dict_segment_index_path,
+                            EncodedVariableInterpreter::get_var_dict_id_range_end() - EncodedVariableInterpreter::get_var_dict_id_range_begin());
+            m_var_dict_ptrs.push_back(&m_var_dict_supply[i]);
+        }
 
         #if FLUSH_TO_DISK_ENABLED
             // fsync archive directory now that everything in the archive directory has been created
@@ -220,7 +224,9 @@ namespace streaming_archive::writer {
 
         m_logtype_dict.close();
         m_logtype_dict_entry.clear();
-        m_var_dict.close();
+        for(int i = 0; i < m_var_dict_ptrs.size(); i++) {
+            m_var_dict_ptrs[i]->close();
+        }
 
         if (::close(m_segments_dir_fd) != 0) {
             // We've already fsynced, so this error shouldn't affect us. Therefore, just log it.
@@ -290,7 +296,7 @@ namespace streaming_archive::writer {
         // Encode message and add components to dictionaries
         vector<encoded_variable_t> encoded_vars;
         vector<variable_dictionary_id_t> var_ids;
-        EncodedVariableInterpreter::encode_and_add_to_dictionary(message, m_logtype_dict_entry, m_var_dict, encoded_vars, var_ids);
+        EncodedVariableInterpreter::encode_and_add_to_dictionary(message, m_logtype_dict_entry, *m_var_dict_ptrs[0], encoded_vars, var_ids);
         logtype_dictionary_id_t logtype_id;
         m_logtype_dict.add_entry(m_logtype_dict_entry, logtype_id);
 
@@ -321,7 +327,8 @@ namespace streaming_archive::writer {
             }
             assert(nullptr != timestamp_pattern);
         }
-        if (get_data_size_of_dictionaries() >= m_target_data_size_of_dicts) {
+        /// TODO: fix for multi-level dict
+        if (get_data_size_of_dictionaries(0) >= m_target_data_size_of_dicts) {
             clp::split_file_and_archive(m_archive_user_config, m_path_for_compression, m_group_id, timestamp_pattern, *this);
         } else if (m_file->get_encoded_size_in_bytes() >= m_target_encoded_file_size) {
             clp::split_file(m_path_for_compression, m_group_id, timestamp_pattern, *this);
@@ -365,7 +372,7 @@ namespace streaming_archive::writer {
                     encoded_variable_t encoded_var;
                     if (!EncodedVariableInterpreter::convert_string_to_representable_hex_var(token.get_string(), encoded_var)) {
                         variable_dictionary_id_t id;
-                        m_var_dict.add_entry(token.get_string(), id);
+                        m_var_dict_ptrs[token_type-2]->add_entry(token.get_string(), id);
                         encoded_var = EncodedVariableInterpreter::encode_var_dict_id(id);
                     }
                     m_logtype_dict_entry.add_non_double_schema_var((int) compressor_frontend::SymbolID::TokenHexId);
@@ -376,7 +383,7 @@ namespace streaming_archive::writer {
                     encoded_variable_t encoded_var;
                     if (!EncodedVariableInterpreter::convert_string_to_representable_integer_var(token.get_string(), encoded_var)) {
                         variable_dictionary_id_t id;
-                        m_var_dict.add_entry(token.get_string(), id);
+                        m_var_dict_ptrs[token_type-2]->add_entry(token.get_string(), id);
                         encoded_var = EncodedVariableInterpreter::encode_var_dict_id(id);
                     }
                     m_logtype_dict_entry.add_non_double_schema_var((int) compressor_frontend::SymbolID::TokenIntId);
@@ -387,7 +394,7 @@ namespace streaming_archive::writer {
                     encoded_variable_t encoded_var;
                     if (!EncodedVariableInterpreter::convert_string_to_representable_double_var(token.get_string(), encoded_var)) {
                         variable_dictionary_id_t id;
-                        m_var_dict.add_entry(token.get_string(), id);
+                        m_var_dict_ptrs[token_type-2]->add_entry(token.get_string(), id);
                         encoded_var = EncodedVariableInterpreter::encode_var_dict_id(id);
                         m_logtype_dict_entry.add_non_double_schema_var((int) compressor_frontend::SymbolID::TokenDoubleId);
                     } else {
@@ -400,7 +407,7 @@ namespace streaming_archive::writer {
                     // Variable string looks like a dictionary variable, so encode it as so
                     encoded_variable_t encoded_var;
                     variable_dictionary_id_t id;
-                    m_var_dict.add_entry(token.get_string(), id);
+                    m_var_dict_ptrs[token_type-2]->add_entry(token.get_string(), id);
                     encoded_var = EncodedVariableInterpreter::encode_var_dict_id(id);
                     m_var_ids.push_back(id);
 
@@ -437,7 +444,9 @@ namespace streaming_archive::writer {
 
         // Flush dictionaries
         m_logtype_dict.write_header_and_flush_to_disk();
-        m_var_dict.write_header_and_flush_to_disk();
+        for(uint32_t i = 0; i < m_var_dict_ptrs.size(); i++) {
+            m_var_dict_ptrs[i]->write_header_and_flush_to_disk();
+        }
     }
 
     void Archive::append_file_contents_to_segment (Segment& segment, ArrayBackedPosIntSet<logtype_dictionary_id_t>& logtype_ids_in_segment,
@@ -501,7 +510,10 @@ namespace streaming_archive::writer {
     {
         auto segment_id = segment.get_id();
         m_logtype_dict.index_segment(segment_id, segment_logtype_ids);
-        m_var_dict.index_segment(segment_id, segment_var_ids);
+
+        for(uint32_t i = 0; i < m_var_dict_ptrs.size(); i++) {
+            m_var_dict_ptrs[i]->index_segment(segment_id, segment_var_ids);
+        }
 
         m_stable_size += segment.get_compressed_size();
 
@@ -517,7 +529,10 @@ namespace streaming_archive::writer {
 
         // Flush dictionaries
         m_logtype_dict.write_header_and_flush_to_disk();
-        m_var_dict.write_header_and_flush_to_disk();
+
+        for(uint32_t i = 0; i < m_var_dict_ptrs.size(); i++) {
+            m_var_dict_ptrs[i]->write_header_and_flush_to_disk();
+        }
 
         for (auto file : files) {
             file->mark_as_in_committed_segment();
@@ -558,7 +573,11 @@ namespace streaming_archive::writer {
     }
 
     size_t Archive::get_stable_size () const {
-        size_t on_disk_size = m_stable_size + m_logtype_dict.get_on_disk_size() + m_var_dict.get_on_disk_size();
+        size_t on_disk_size = m_stable_size + m_logtype_dict.get_on_disk_size();
+
+        for(uint32_t i = 0; i < m_var_dict_ptrs.size(); i++) {
+            on_disk_size += m_var_dict_ptrs[i]->get_on_disk_size();
+        }
 
         // Add size of unclosed segment
         if (m_segment_for_files_without_timestamps.is_open()) {

@@ -82,7 +82,7 @@ bool convert_string_to_hex (const std::string& raw, int64_t& converted) {
     char* endptr;
     // Reset errno so we can detect if it's been set
     errno = 0;
-    int64_t raw_as_int = strtoll(c_str, &endptr, 10);
+    int64_t raw_as_int = strtoll(c_str, &endptr, 16);
     if (endptr - c_str != raw.length() || (LLONG_MAX == raw_as_int && ERANGE == errno)) {
         // Conversion failed
         return false;

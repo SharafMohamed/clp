@@ -122,35 +122,50 @@ int main (int argc, const char* argv[]) {
 
     logtype_dict.close();
 
-    // Open variables dictionary
-    auto var_dict_path = boost::filesystem::path(command_line_args.get_archive_path()) / streaming_archive::cVarDictFilename;
-    auto var_segment_index_path = boost::filesystem::path(command_line_args.get_archive_path()) / streaming_archive::cVarSegmentIndexFilename;
-    VariableDictionaryReader var_dict;
-    var_dict.open(var_dict_path.string(), var_segment_index_path.string());
-    var_dict.read_new_entries();
-
-    // Write readable dictionary
-    auto readable_var_dict_path = boost::filesystem::path(command_line_args.get_output_dir()) / streaming_archive::cVarDictFilename;
-    auto readable_var_segment_index_path = boost::filesystem::path(command_line_args.get_output_dir()) / streaming_archive::cVarSegmentIndexFilename;
-    readable_var_dict_path += ".hr";
-    readable_var_segment_index_path += ".hr";
-    file_writer.open(readable_var_dict_path.string(), FileWriter::OpenMode::CREATE_FOR_WRITING);
-    index_writer.open(readable_var_segment_index_path.string(), FileWriter::OpenMode::CREATE_FOR_WRITING);
-    for (const auto& entry : var_dict.get_entries()) {
-        file_writer.write_string(entry.get_value());
-        file_writer.write_char('\n');
-
-        const std::set<segment_id_t>& segment_ids = entry.get_ids_of_segments_containing_entry();
-        // segment_ids is a std::set, which iterates the IDs in ascending order
-        for (auto segment_id : segment_ids) {
-            index_writer.write_string(std::to_string(segment_id) + " ");
-        }
-        index_writer.write_char('\n');
+    std::map<uint32_t, std::string> m_id_symbol;
+    if (use_heuristic) {
+        m_id_symbol[0] = "heuristic";
+    } else {
+        m_id_symbol = log_parser->m_lexer.m_id_symbol;
     }
-    file_writer.close();
-    index_writer.close();
 
-    var_dict.close();
+    for(uint32_t i = 2; i < m_id_symbol.size(); i++) {
+        if(m_id_symbol[i] == "int" || m_id_symbol[i] == "double" || m_id_symbol[i] == "firstTimestamp" || m_id_symbol[i] == "newLineTimestamp" ||
+           m_id_symbol[i] == "newLine") {
+            continue;
+        }
+        // Open variables dictionary
+        auto var_dict_path = boost::filesystem::path(command_line_args.get_archive_path()) / streaming_archive::cVarDictFilename;
+        var_dict_path += + "_" + m_id_symbol[i];
+        auto var_segment_index_path = boost::filesystem::path(command_line_args.get_archive_path()) / streaming_archive::cVarSegmentIndexFilename;
+        VariableDictionaryReader var_dict;
+        var_dict.open(var_dict_path.string(), var_segment_index_path.string());
+        var_dict.read_new_entries();
+
+        // Write readable dictionary
+        auto readable_var_dict_path = boost::filesystem::path(command_line_args.get_output_dir()) / streaming_archive::cVarDictFilename;
+        readable_var_dict_path += + "_" + m_id_symbol[i];
+        auto readable_var_segment_index_path = boost::filesystem::path(command_line_args.get_output_dir()) / streaming_archive::cVarSegmentIndexFilename;
+        readable_var_dict_path += ".hr";
+        readable_var_segment_index_path += ".hr";
+        file_writer.open(readable_var_dict_path.string(), FileWriter::OpenMode::CREATE_FOR_WRITING);
+        index_writer.open(readable_var_segment_index_path.string(), FileWriter::OpenMode::CREATE_FOR_WRITING);
+        for (const auto& entry: var_dict.get_entries()) {
+            file_writer.write_string(entry.get_value());
+            file_writer.write_char('\n');
+
+            const std::set<segment_id_t>& segment_ids = entry.get_ids_of_segments_containing_entry();
+            // segment_ids is a std::set, which iterates the IDs in ascending order
+            for (auto segment_id: segment_ids) {
+                index_writer.write_string(std::to_string(segment_id) + " ");
+            }
+            index_writer.write_char('\n');
+        }
+        file_writer.close();
+        index_writer.close();
+
+        var_dict.close();
+    }
 
     return 0;
 }
