@@ -337,7 +337,9 @@ namespace streaming_archive::writer {
         }
 
         m_encoded_vars.clear();
-        m_var_ids.clear();
+        for(uint32_t i = 0; i < m_var_ids.size(); i++) {
+            m_var_ids[i].clear();
+        }
         m_logtype_dict_entry.clear();
 
         size_t num_uncompressed_bytes = 0;
