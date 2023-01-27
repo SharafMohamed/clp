@@ -80,7 +80,7 @@ namespace streaming_archive { namespace writer {
          * @param num_uncompressed_bytes
          */
         void write_encoded_msg (epochtime_t timestamp, logtype_dictionary_id_t logtype_id, const std::vector<encoded_variable_t>& encoded_vars,
-                                const std::vector<variable_dictionary_id_t>& var_ids, size_t num_uncompressed_bytes);
+                                size_t num_uncompressed_bytes);
 
         /**
          * Changes timestamp pattern in use at current message in file

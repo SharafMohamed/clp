@@ -177,12 +177,14 @@ namespace streaming_archive::writer {
         // Open variable dictionary
         string var_dict_path = archive_path_string + '/' + cVarDictFilename;
         string var_dict_segment_index_path = archive_path_string + '/' + cVarSegmentIndexFilename;
-        for(uint32_t i = 2; i < m_id_symbol.size(); i++) {
-
-            m_var_dict_supply[i].open(var_dict_path + "_" + m_id_symbol[i], var_dict_segment_index_path,
+        for(uint32_t i = 0; i < m_id_symbol.size(); i++) {
+            m_var_dict_supply[i].open(var_dict_path + "_" + m_id_symbol[i], var_dict_segment_index_path + "_" + m_id_symbol[i],
                             EncodedVariableInterpreter::get_var_dict_id_range_end() - EncodedVariableInterpreter::get_var_dict_id_range_begin());
             m_var_dict_ptrs.push_back(&m_var_dict_supply[i]);
         }
+        m_var_ids.resize(m_id_symbol.size());
+        m_var_ids_in_segment_for_files_with_timestamps.resize(m_id_symbol.size());
+        m_var_ids_for_file_with_unassigned_segment.resize(m_id_symbol.size());
 
         #if FLUSH_TO_DISK_ENABLED
             // fsync archive directory now that everything in the archive directory has been created
@@ -300,15 +302,15 @@ namespace streaming_archive::writer {
         logtype_dictionary_id_t logtype_id;
         m_logtype_dict.add_entry(m_logtype_dict_entry, logtype_id);
 
-        m_file->write_encoded_msg(timestamp, logtype_id, encoded_vars, var_ids, num_uncompressed_bytes);
+        m_file->write_encoded_msg(timestamp, logtype_id, encoded_vars, num_uncompressed_bytes);
 
         // Update segment indices
         if (m_file->has_ts_pattern()) {
             m_logtype_ids_in_segment_for_files_with_timestamps.insert(logtype_id);
-            m_var_ids_in_segment_for_files_with_timestamps.insert_all(var_ids);
+            m_var_ids_in_segment_for_files_with_timestamps[0].insert_all(var_ids);
         } else {
             m_logtype_ids_for_file_with_unassigned_segment.insert(logtype_id);
-            m_var_ids_for_file_with_unassigned_segment.insert(var_ids.cbegin(), var_ids.cend());
+            m_var_ids_for_file_with_unassigned_segment[0].insert(var_ids.cbegin(), var_ids.cend());
         }
     }
     
@@ -372,8 +374,9 @@ namespace streaming_archive::writer {
                     encoded_variable_t encoded_var;
                     if (!EncodedVariableInterpreter::convert_string_to_representable_hex_var(token.get_string(), encoded_var)) {
                         variable_dictionary_id_t id;
-                        m_var_dict_ptrs[token_type-2]->add_entry(token.get_string(), id);
+                        m_var_dict_ptrs[token_type]->add_entry(token.get_string(), id);
                         encoded_var = EncodedVariableInterpreter::encode_var_dict_id(id);
+                        m_var_ids[token_type].push_back(id);
                     }
                     m_logtype_dict_entry.add_non_double_schema_var((int) compressor_frontend::SymbolID::TokenHexId);
                     m_encoded_vars.push_back(encoded_var);
@@ -383,8 +386,9 @@ namespace streaming_archive::writer {
                     encoded_variable_t encoded_var;
                     if (!EncodedVariableInterpreter::convert_string_to_representable_integer_var(token.get_string(), encoded_var)) {
                         variable_dictionary_id_t id;
-                        m_var_dict_ptrs[token_type-2]->add_entry(token.get_string(), id);
+                        m_var_dict_ptrs[token_type]->add_entry(token.get_string(), id);
                         encoded_var = EncodedVariableInterpreter::encode_var_dict_id(id);
+                        m_var_ids[token_type].push_back(id);
                     }
                     m_logtype_dict_entry.add_non_double_schema_var((int) compressor_frontend::SymbolID::TokenIntId);
                     m_encoded_vars.push_back(encoded_var);
@@ -394,8 +398,9 @@ namespace streaming_archive::writer {
                     encoded_variable_t encoded_var;
                     if (!EncodedVariableInterpreter::convert_string_to_representable_double_var(token.get_string(), encoded_var)) {
                         variable_dictionary_id_t id;
-                        m_var_dict_ptrs[token_type-2]->add_entry(token.get_string(), id);
+                        m_var_dict_ptrs[token_type]->add_entry(token.get_string(), id);
                         encoded_var = EncodedVariableInterpreter::encode_var_dict_id(id);
+                        m_var_ids[token_type].push_back(id);
                         m_logtype_dict_entry.add_non_double_schema_var((int) compressor_frontend::SymbolID::TokenDoubleId);
                     } else {
                         m_logtype_dict_entry.add_double_var();
@@ -407,11 +412,11 @@ namespace streaming_archive::writer {
                     // Variable string looks like a dictionary variable, so encode it as so
                     encoded_variable_t encoded_var;
                     variable_dictionary_id_t id;
-                    m_var_dict_ptrs[token_type-2]->add_entry(token.get_string(), id);
+                    m_var_dict_ptrs[token_type]->add_entry(token.get_string(), id);
                     encoded_var = EncodedVariableInterpreter::encode_var_dict_id(id);
-                    m_var_ids.push_back(id);
-
+                    m_var_ids[token_type].push_back(id);
                     m_logtype_dict_entry.add_non_double_schema_var(token_type);
+
                     m_encoded_vars.push_back(encoded_var);
                     break;
                 }
@@ -420,15 +425,19 @@ namespace streaming_archive::writer {
         if (!m_logtype_dict_entry.get_value().empty()) {
             logtype_dictionary_id_t logtype_id;
             m_logtype_dict.add_entry(m_logtype_dict_entry, logtype_id);
-            m_file->write_encoded_msg(timestamp, logtype_id, m_encoded_vars, m_var_ids, num_uncompressed_bytes);
+            m_file->write_encoded_msg(timestamp, logtype_id, m_encoded_vars, num_uncompressed_bytes);
 
             // Update segment indices
             if (m_file->has_ts_pattern()) {
                 m_logtype_ids_in_segment_for_files_with_timestamps.insert(logtype_id);
-                m_var_ids_in_segment_for_files_with_timestamps.insert_all(m_var_ids);
+                for(uint32_t i = 0; i < m_var_ids_in_segment_for_files_with_timestamps.size(); i++) {
+                    m_var_ids_in_segment_for_files_with_timestamps[i].insert_all(m_var_ids[i]);
+                }
             } else {
                 m_logtype_ids_for_file_with_unassigned_segment.insert(logtype_id);
-                m_var_ids_for_file_with_unassigned_segment.insert(m_var_ids.cbegin(), m_var_ids.cend());
+                for(uint32_t i = 0; i < m_var_ids_for_file_with_unassigned_segment.size(); i++) {
+                    m_var_ids_for_file_with_unassigned_segment[i].insert(m_var_ids[i].cbegin(), m_var_ids[i].cend());
+                }
             }
         }
     }
@@ -450,7 +459,8 @@ namespace streaming_archive::writer {
     }
 
     void Archive::append_file_contents_to_segment (Segment& segment, ArrayBackedPosIntSet<logtype_dictionary_id_t>& logtype_ids_in_segment,
-                                                   ArrayBackedPosIntSet<variable_dictionary_id_t>& var_ids_in_segment, vector<File*>& files_in_segment)
+                                                   std::vector<ArrayBackedPosIntSet<variable_dictionary_id_t>>& var_ids_in_segment,
+                                                   vector<File*>& files_in_segment)
     {
         if (!segment.is_open()) {
             segment.open(m_segments_dir_path, m_next_segment_id++, m_compression_level);
@@ -474,12 +484,16 @@ namespace streaming_archive::writer {
 
         if (m_file->has_ts_pattern()) {
             m_logtype_ids_in_segment_for_files_with_timestamps.insert_all(m_logtype_ids_for_file_with_unassigned_segment);
-            m_var_ids_in_segment_for_files_with_timestamps.insert_all(m_var_ids_for_file_with_unassigned_segment);
+            for(uint32_t i = 0; i < m_var_ids_in_segment_for_files_with_timestamps.size(); i++) {
+                m_var_ids_in_segment_for_files_with_timestamps[i].insert_all(m_var_ids_for_file_with_unassigned_segment[i]);
+            }
             append_file_contents_to_segment(m_segment_for_files_with_timestamps, m_logtype_ids_in_segment_for_files_with_timestamps,
                                             m_var_ids_in_segment_for_files_with_timestamps, m_files_with_timestamps_in_segment);
         } else {
             m_logtype_ids_in_segment_for_files_without_timestamps.insert_all(m_logtype_ids_for_file_with_unassigned_segment);
-            m_var_ids_in_segment_for_files_without_timestamps.insert_all(m_var_ids_for_file_with_unassigned_segment);
+            for(uint32_t i = 0; i < m_var_ids_in_segment_for_files_without_timestamps.size(); i++) {
+                m_var_ids_in_segment_for_files_without_timestamps[i].insert_all(m_var_ids_for_file_with_unassigned_segment[i]);
+            }
             append_file_contents_to_segment(m_segment_for_files_without_timestamps, m_logtype_ids_in_segment_for_files_without_timestamps,
                                             m_var_ids_in_segment_for_files_without_timestamps, m_files_without_timestamps_in_segment);
         }
@@ -506,13 +520,13 @@ namespace streaming_archive::writer {
 
     void Archive::close_segment_and_persist_file_metadata (Segment& segment, std::vector<File*>& files,
                                                            ArrayBackedPosIntSet<logtype_dictionary_id_t>& segment_logtype_ids,
-                                                           ArrayBackedPosIntSet<variable_dictionary_id_t>& segment_var_ids)
+                                                           std::vector<ArrayBackedPosIntSet<variable_dictionary_id_t>>& segment_var_ids)
     {
         auto segment_id = segment.get_id();
         m_logtype_dict.index_segment(segment_id, segment_logtype_ids);
 
         for(uint32_t i = 0; i < m_var_dict_ptrs.size(); i++) {
-            m_var_dict_ptrs[i]->index_segment(segment_id, segment_var_ids);
+            m_var_dict_ptrs[i]->index_segment(segment_id, segment_var_ids[i]);
         }
 
         m_stable_size += segment.get_compressed_size();

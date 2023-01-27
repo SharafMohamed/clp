@@ -110,6 +110,7 @@ namespace clp {
                                                 file_to_compress.get_path_for_compression(),
                                                 file_to_compress.get_group_id(), archive_writer, m_file_reader);
             } else {
+                SPDLOG_WARN("Compressing {}", file_name);
                 parse_and_encode_new(target_data_size_of_dicts, archive_user_config, target_encoded_file_size,
                                      file_to_compress.get_path_for_compression(),
                                      file_to_compress.get_group_id(), archive_writer, m_file_reader);

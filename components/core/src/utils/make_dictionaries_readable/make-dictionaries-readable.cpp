@@ -129,15 +129,12 @@ int main (int argc, const char* argv[]) {
         m_id_symbol = log_parser->m_lexer.m_id_symbol;
     }
 
-    for(uint32_t i = 2; i < m_id_symbol.size(); i++) {
-        if(m_id_symbol[i] == "int" || m_id_symbol[i] == "double" || m_id_symbol[i] == "firstTimestamp" || m_id_symbol[i] == "newLineTimestamp" ||
-           m_id_symbol[i] == "newLine") {
-            continue;
-        }
+    for(uint32_t i = 0; i < m_id_symbol.size(); i++) {
         // Open variables dictionary
         auto var_dict_path = boost::filesystem::path(command_line_args.get_archive_path()) / streaming_archive::cVarDictFilename;
         var_dict_path += + "_" + m_id_symbol[i];
         auto var_segment_index_path = boost::filesystem::path(command_line_args.get_archive_path()) / streaming_archive::cVarSegmentIndexFilename;
+        var_segment_index_path += + "_" + m_id_symbol[i];
         VariableDictionaryReader var_dict;
         var_dict.open(var_dict_path.string(), var_segment_index_path.string());
         var_dict.read_new_entries();
@@ -146,6 +143,7 @@ int main (int argc, const char* argv[]) {
         auto readable_var_dict_path = boost::filesystem::path(command_line_args.get_output_dir()) / streaming_archive::cVarDictFilename;
         readable_var_dict_path += + "_" + m_id_symbol[i];
         auto readable_var_segment_index_path = boost::filesystem::path(command_line_args.get_output_dir()) / streaming_archive::cVarSegmentIndexFilename;
+        readable_var_segment_index_path += + "_" + m_id_symbol[i];
         readable_var_dict_path += ".hr";
         readable_var_segment_index_path += ".hr";
         file_writer.open(readable_var_dict_path.string(), FileWriter::OpenMode::CREATE_FOR_WRITING);

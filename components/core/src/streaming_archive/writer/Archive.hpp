@@ -207,7 +207,7 @@ namespace streaming_archive { namespace writer {
          * @param files_in_segment
          */
         void append_file_contents_to_segment (Segment& segment, ArrayBackedPosIntSet<logtype_dictionary_id_t>& logtype_ids_in_segment,
-                                              ArrayBackedPosIntSet<variable_dictionary_id_t>& var_ids_in_segment, std::vector<File*>& files_in_segment);
+                                              std::vector<ArrayBackedPosIntSet<variable_dictionary_id_t>>& var_ids_in_segment, std::vector<File*>& files_in_segment);
         /**
          * Writes the given files' metadata to the database using bulk writes
          * @param files
@@ -226,7 +226,7 @@ namespace streaming_archive { namespace writer {
          */
         void close_segment_and_persist_file_metadata (Segment& segment, std::vector<File*>& files,
                                                       ArrayBackedPosIntSet<logtype_dictionary_id_t>& segment_logtype_ids,
-                                                      ArrayBackedPosIntSet<variable_dictionary_id_t>& segment_var_ids);
+                                                      std::vector<ArrayBackedPosIntSet<variable_dictionary_id_t>>& segment_var_ids);
 
         /**
          * Gets the size of uncompressed data that has been compressed into the archive and will not be changed
@@ -266,7 +266,7 @@ namespace streaming_archive { namespace writer {
         // Holds preallocated logtype dictionary entry for performance
         LogTypeDictionaryEntry m_logtype_dict_entry;
         std::vector<encoded_variable_t> m_encoded_vars;
-        std::vector<variable_dictionary_id_t> m_var_ids;
+        std::vector<std::vector<variable_dictionary_id_t>> m_var_ids;
         std::vector<VariableDictionaryWriter*> m_var_dict_ptrs;
         /// TODO: do this better (make VariableDictionaryWriter more compatible with vectors)
         VariableDictionaryWriter m_var_dict_supply[100];
@@ -285,13 +285,13 @@ namespace streaming_archive { namespace writer {
         size_t m_target_segment_uncompressed_size;
         Segment m_segment_for_files_with_timestamps;
         ArrayBackedPosIntSet<logtype_dictionary_id_t> m_logtype_ids_in_segment_for_files_with_timestamps;
-        ArrayBackedPosIntSet<variable_dictionary_id_t> m_var_ids_in_segment_for_files_with_timestamps;
+        std::vector<ArrayBackedPosIntSet<variable_dictionary_id_t>> m_var_ids_in_segment_for_files_with_timestamps;
         // Logtype and variable IDs for a file that hasn't yet been assigned to the timestamp or timestamp-less segment
         std::unordered_set<logtype_dictionary_id_t> m_logtype_ids_for_file_with_unassigned_segment;
-        std::unordered_set<variable_dictionary_id_t> m_var_ids_for_file_with_unassigned_segment;
+        std::vector<std::unordered_set<variable_dictionary_id_t>> m_var_ids_for_file_with_unassigned_segment;
         Segment m_segment_for_files_without_timestamps;
         ArrayBackedPosIntSet<logtype_dictionary_id_t> m_logtype_ids_in_segment_for_files_without_timestamps;
-        ArrayBackedPosIntSet<variable_dictionary_id_t> m_var_ids_in_segment_for_files_without_timestamps;
+        std::vector<ArrayBackedPosIntSet<variable_dictionary_id_t>> m_var_ids_in_segment_for_files_without_timestamps;
 
         size_t m_stable_uncompressed_size;
         size_t m_stable_size;

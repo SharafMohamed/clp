@@ -42,7 +42,7 @@ namespace streaming_archive { namespace writer {
     }
 
     void File::write_encoded_msg (epochtime_t timestamp, logtype_dictionary_id_t logtype_id, const vector<encoded_variable_t>& encoded_vars,
-                                  const vector<variable_dictionary_id_t>& var_ids, size_t num_uncompressed_bytes)
+                                  size_t num_uncompressed_bytes)
     {
         m_timestamps->push_back(timestamp);
         m_logtypes->push_back(logtype_id);
