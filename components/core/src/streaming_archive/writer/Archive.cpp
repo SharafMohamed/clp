@@ -500,7 +500,9 @@ namespace streaming_archive::writer {
                                             m_var_ids_in_segment_for_files_without_timestamps, m_files_without_timestamps_in_segment);
         }
         m_logtype_ids_for_file_with_unassigned_segment.clear();
-        m_var_ids_for_file_with_unassigned_segment.clear();
+        for(uint32_t i = 0; i < m_var_ids_for_file_with_unassigned_segment.size(); i++) {
+            m_var_ids_for_file_with_unassigned_segment[i].clear();
+        }
         // Make sure file pointer is nulled and cannot be accessed outside
         m_file = nullptr;
     }

@@ -32,9 +32,6 @@ variable_dictionary_id_t EncodedVariableInterpreter::decode_var_dict_id (encoded
     return id;
 }
 
-//hex:(\+){0,1}(0x){0,1}[a-fA-F0-9]+(\.){0,1}
-//hex:\-{0,1}[0-9]+(\.){0,1}
-//hex:[\-\+]{0,1}[0-9]+\.[0-9]+
 bool EncodedVariableInterpreter::convert_string_to_representable_hex_var (const string& value, encoded_variable_t& encoded_var) {
     /// TODO: add checks to verify valid hex
 
