@@ -286,14 +286,14 @@ namespace compressor_frontend {
             m_type_ids = nullptr;
         }
         while (true) {
-            if (input_buffer.about_to_overflow()) {
+            if (input_buffer.all_data_read()) {
                 m_asked_for_more_data = true;
                 m_prev_state = state;
                 throw runtime_error("Input buffer about to overflow");
             }
             uint32_t prev_byte_buf_pos = input_buffer.get_curr_pos();
             unsigned char next_char = input_buffer.get_next_character();
-            if ((m_is_delimiter[next_char] || input_buffer.get_at_end_of_file() || !m_has_delimiters) && state->is_accepting()) {
+            if ((m_is_delimiter[next_char] || input_buffer.at_end_of_file() || !m_has_delimiters) && state->is_accepting()) {
                 m_match = true;
                 m_type_ids = &(state->get_tags());
                 m_match_pos = prev_byte_buf_pos;
@@ -311,7 +311,7 @@ namespace compressor_frontend {
                     m_match_line = m_line;
                 }
             }
-            if (input_buffer.get_at_end_of_file() || next == nullptr) {
+            if (input_buffer.at_end_of_file() || next == nullptr) {
                 if (m_match) {
                     input_buffer.set_at_end_of_file(false);
                     input_buffer.set_curr_pos(m_match_pos);
@@ -325,7 +325,7 @@ namespace compressor_frontend {
                     m_last_match_line = m_match_line;
                     return Token{m_start_pos, m_match_pos,  input_buffer.get_active_buffer(), input_buffer.get_curr_storage_size(),
                                  m_match_line, m_type_ids};
-                } else if (input_buffer.get_at_end_of_file() && m_start_pos == input_buffer.get_curr_pos()) {
+                } else if (input_buffer.at_end_of_file() && m_start_pos == input_buffer.get_curr_pos()) {
                     if (m_last_match_pos != m_start_pos) {
                         m_match_pos = input_buffer.get_curr_pos();
                         m_type_ids = &cTokenEndTypes;
@@ -337,8 +337,8 @@ namespace compressor_frontend {
                                  input_buffer.get_curr_storage_size(), m_line, &cTokenEndTypes};
                 } else {
                     /// TODO: remove timestamp from m_is_fist_char so that m_is_delimiter check not needed
-                    while (input_buffer.get_at_end_of_file() == false && (m_is_first_char[next_char] == false | m_is_delimiter[next_char] == false)) {
-                        if (input_buffer.about_to_overflow()) {
+                    while (input_buffer.at_end_of_file() == false && (m_is_first_char[next_char] == false | m_is_delimiter[next_char] == false)) {
+                        if (input_buffer.all_data_read()) {
                             m_asked_for_more_data = true;
                             m_prev_state = state;
                             throw runtime_error("Input buffer about to overflow");
@@ -377,14 +377,14 @@ namespace compressor_frontend {
             m_type_ids = nullptr;
         }
         while (true) {
-            if (input_buffer.about_to_overflow()) {
+            if (input_buffer.all_data_read()) {
                 m_asked_for_more_data = true;
                 m_prev_state = state;
                 throw runtime_error("Input buffer about to overflow");
             }
             uint32_t prev_byte_buf_pos = input_buffer.get_curr_pos();
             unsigned char next_char = input_buffer.get_next_character();
-            if ((m_is_delimiter[next_char] || input_buffer.get_at_end_of_file() || !m_has_delimiters) && state->is_accepting()) {
+            if ((m_is_delimiter[next_char] || input_buffer.at_end_of_file() || !m_has_delimiters) && state->is_accepting()) {
                 m_match = true;
                 m_type_ids = &(state->get_tags());
                 m_match_pos = prev_byte_buf_pos;
@@ -402,8 +402,8 @@ namespace compressor_frontend {
                     m_match_line = m_line;
                 }
             }
-            if (input_buffer.get_at_end_of_file() || next == nullptr) {
-                assert (input_buffer.get_at_end_of_file());
+            if (input_buffer.at_end_of_file() || next == nullptr) {
+                assert (input_buffer.at_end_of_file());
 
                 if (!m_match || (m_match && m_match_pos != input_buffer.get_curr_pos())) {
                     return Token{m_last_match_pos, input_buffer.get_curr_pos(), input_buffer.get_active_buffer(),

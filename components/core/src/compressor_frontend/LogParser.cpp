@@ -122,7 +122,7 @@ namespace compressor_frontend {
     /// TODO: if the first text is a variable in the no timestamp case you lose the first variable to static text since it has no leading delim
     bool LogParser::init (InputBuffer& input_buffer, OutputBuffer& output_buffer) {
         Token next_token = get_next_symbol_new(input_buffer);
-        output_buffer.set_value(0, next_token);
+        output_buffer.set_token(0, next_token);
         if (next_token.m_type_ids_ptr->at(0) == (int) SymbolID::TokenEndID) {
             return true;
         }
@@ -131,7 +131,7 @@ namespace compressor_frontend {
             output_buffer.set_curr_pos(1);
         } else {
             output_buffer.set_has_timestamp(false);
-            output_buffer.set_value(1, next_token);
+            output_buffer.set_token(1, next_token);
             output_buffer.set_curr_pos(2);
         }
         m_has_start_of_log_message = false;
@@ -145,11 +145,11 @@ namespace compressor_frontend {
             if (m_start_of_log_message.m_type_ids_ptr->at(0) == (int) SymbolID::TokenNewlineTimestampId) {
                 output_buffer.set_has_timestamp(true);
             }
-            if (output_buffer.get_has_timestamp()) {
-                output_buffer.set_value(0, m_start_of_log_message);
+            if (output_buffer.has_timestamp()) {
+                output_buffer.set_token(0, m_start_of_log_message);
                 output_buffer.set_curr_pos(1);
             } else {
-                output_buffer.set_value(1, m_start_of_log_message);
+                output_buffer.set_token(1, m_start_of_log_message);
                 output_buffer.set_curr_pos(2);
             }
             m_has_start_of_log_message = false;
@@ -157,30 +157,30 @@ namespace compressor_frontend {
 
         while (true) {
             Token next_token = get_next_symbol_new(input_buffer);
-            output_buffer.set_curr_value(next_token);
+            output_buffer.set_curr_token(next_token);
             int token_type = next_token.m_type_ids_ptr->at(0);
-            bool found_start_of_next_message = (output_buffer.get_has_timestamp() && token_type == (int) SymbolID::TokenNewlineTimestampId) ||
-                                               (!output_buffer.get_has_timestamp() && next_token.get_char(0) == '\n' &&
+            bool found_start_of_next_message = (output_buffer.has_timestamp() && token_type == (int) SymbolID::TokenNewlineTimestampId) ||
+                                               (!output_buffer.has_timestamp() && next_token.get_char(0) == '\n' &&
                                                 token_type != (int) SymbolID::TokenNewlineId);
             if (token_type == (int) SymbolID::TokenEndID) {
                 return ParsingAction::CompressAndFinish;
-            } else if (output_buffer.get_has_timestamp() == false && token_type == (int) SymbolID::TokenNewlineId) {
-                input_buffer.set_consumed_pos(output_buffer.get_curr_value().m_end_pos);
+            } else if (output_buffer.has_timestamp() == false && token_type == (int) SymbolID::TokenNewlineId) {
+                input_buffer.set_consumed_pos(output_buffer.get_curr_token().m_end_pos);
                 output_buffer.increment_pos();
                 return ParsingAction::Compress;
             } else if (found_start_of_next_message) {
                 // increment by 1 because the '\n' character is not part of the next log message
-                m_start_of_log_message = output_buffer.get_curr_value();
+                m_start_of_log_message = output_buffer.get_curr_token();
                 if (m_start_of_log_message.m_start_pos == m_start_of_log_message.m_buffer_size - 1) {
                     m_start_of_log_message.m_start_pos = 0;
                 } else {
                     m_start_of_log_message.m_start_pos++;
                 }
                 // make the last token of the current message the '\n' character
-                Token curr_token = output_buffer.get_curr_value();
+                Token curr_token = output_buffer.get_curr_token();
                 curr_token.m_end_pos = curr_token.m_start_pos + 1;
                 curr_token.m_type_ids_ptr = &Lexer<RegexNFAByteState, RegexDFAByteState>::cTokenUncaughtStringTypes;
-                output_buffer.set_curr_value(curr_token);
+                output_buffer.set_curr_token(curr_token);
                 input_buffer.set_consumed_pos(m_start_of_log_message.m_start_pos - 1);
                 m_has_start_of_log_message = true;
                 output_buffer.increment_pos();

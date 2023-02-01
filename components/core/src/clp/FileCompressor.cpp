@@ -154,12 +154,7 @@ namespace clp {
             static compressor_frontend::OutputBuffer output_buffer;
             input_buffer.reset();
             output_buffer.reset();
-
-            /// TODO: is there a way to read input_buffer without exposing the internal buffer of input_buffer to the caller or giving input_buffer the reader
-            // Read into input buffer
-            size_t bytes_read;
-            reader.read(input_buffer.get_active_buffer(), input_buffer.get_curr_storage_size() / 2, bytes_read);
-            input_buffer.initial_update_after_read(bytes_read);
+            input_buffer.read(reader);
 
             // Initialize parser and lexer
             m_log_parser->reset_new(output_buffer);
@@ -171,20 +166,18 @@ namespace clp {
                     init_successful = true;
                 } catch (std::runtime_error const& err) {
                     if (string(err.what()) == "Input buffer about to overflow") {
-                        uint32_t old_storage_size = input_buffer.get_curr_storage_size();
-                        bool flipped_static_buffer = input_buffer.increase_size();
-                        if(flipped_static_buffer) {
+                        size_t old_storage_size;
+                        bool flipped_static_buffer = input_buffer.increase_size_and_read(reader, old_storage_size);
+                        if (flipped_static_buffer) {
                             m_log_parser->flip_lexer_states(old_storage_size);
                         }
-                        reader.read(input_buffer.get_active_buffer(), input_buffer.get_curr_storage_size() / 2, bytes_read);
-                        input_buffer.update_after_read(bytes_read);
                     } else {
                        throw (err);
                     }
                     init_successful = false;
                 }
             }
-            if (output_buffer.get_has_timestamp() == false) {
+            if (output_buffer.has_timestamp() == false) {
                 archive_writer.change_ts_pattern(nullptr);
             }
             LogParser::ParsingAction parsing_action = LogParser::ParsingAction::None;
@@ -200,13 +193,11 @@ namespace clp {
                     } catch (std::runtime_error const& err) {
                         compressor_frontend::parse_stopwatch.stop();
                         if (string(err.what()) == "Input buffer about to overflow") {
-                            uint32_t old_storage_size = input_buffer.get_curr_storage_size();
-                            bool flipped_static_buffer = input_buffer.increase_size();
+                            size_t old_storage_size;
+                            bool flipped_static_buffer = input_buffer.increase_size_and_read(reader, old_storage_size);
                             if(flipped_static_buffer) {
                                 m_log_parser->flip_lexer_states(old_storage_size);
                             }
-                            reader.read(input_buffer.get_active_buffer() + input_buffer.get_curr_pos(), input_buffer.get_curr_storage_size() / 2, bytes_read);
-                            input_buffer.update_after_read(bytes_read);
                         }  else {
                             throw (err);
                         }
@@ -217,15 +208,9 @@ namespace clp {
                 switch (parsing_action) {
                     case (LogParser::ParsingAction::Compress) : {
                         archive_writer.write_msg_using_schema(output_buffer.get_active_buffer(), output_buffer.get_curr_pos(),
-                                                              output_buffer.get_has_delimiters(), output_buffer.get_has_timestamp());
-                        bool read_needed = input_buffer.check_if_read_needed();
-                        if (read_needed) {
-                            uint32_t read_offset = input_buffer.get_read_offset();
-                            reader.read(input_buffer.get_active_buffer() + read_offset, input_buffer.get_curr_storage_size() / 2, bytes_read);
-                            input_buffer.update_after_read(bytes_read);
-                        }
-
-                        if(output_buffer.get_has_timestamp()) {
+                                                              output_buffer.has_delimiters(), output_buffer.has_timestamp());
+                        input_buffer.try_read(reader);
+                        if(output_buffer.has_timestamp()) {
                             output_buffer.set_curr_pos(0);
                         } else {
                             output_buffer.set_curr_pos(1);
@@ -234,7 +219,7 @@ namespace clp {
                     }
                     case (LogParser::ParsingAction::CompressAndFinish) : {
                         archive_writer.write_msg_using_schema(output_buffer.get_active_buffer(), output_buffer.get_curr_pos(),
-                                                              output_buffer.get_has_delimiters(), output_buffer.get_has_timestamp());
+                                                              output_buffer.has_delimiters(), output_buffer.has_timestamp());
                         break;
                     }
                     default : {

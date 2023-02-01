@@ -18,30 +18,29 @@ namespace compressor_frontend {
         m_finished_reading_file = false;
         m_consumed_pos = 0;
         m_bytes_read = 0;
-        m_last_read_first_half_of_buf = false;
-        m_fail_pos = m_curr_storage_size/2;
+        m_last_read_first_half = false;
         Buffer::reset();
     }
 
-    bool InputBuffer::check_if_read_needed () {
+    bool InputBuffer::read_is_safe () {
         if (m_finished_reading_file) {
             return false;
         }
+        // If the start of the next log message is at pos 0, the previous character is at m_curr_storage_size - 1
         if (m_consumed_pos == -1) {
-            m_consumed_pos += m_curr_storage_size;
+            m_consumed_pos = m_curr_storage_size - 1;
         }
-        if ((!m_last_read_first_half_of_buf && m_consumed_pos > m_curr_storage_size / 2) ||
-            (m_last_read_first_half_of_buf && m_consumed_pos < m_curr_storage_size / 2 && m_consumed_pos > 0)) {
+        // Check that the last log message ends in the half of the buffer that was last read.
+        // This means the other half of the buffer has already been fully used.
+        if ((!m_last_read_first_half && m_consumed_pos > m_curr_storage_size / 2) ||
+            (m_last_read_first_half && m_consumed_pos < m_curr_storage_size / 2 && m_consumed_pos > 0)) {
             return true;
         }
         return false;
     }
 
-    bool InputBuffer::about_to_overflow () {
-        return (m_curr_pos == m_fail_pos);
-    }
-
-    bool InputBuffer::increase_size () {
+    bool InputBuffer::increase_size_and_read (ReaderInterface& reader, size_t& old_storage_size) {
+        old_storage_size = m_curr_storage_size;
         bool flipped_static_buffer = false;
         // Handle super long line for completeness, but efficiency doesn't matter
         if (m_active_storage == m_static_storage) {
@@ -49,17 +48,17 @@ namespace compressor_frontend {
         } else {
             SPDLOG_WARN("Long line detected increasing dynamic input buffer size to {}.", m_curr_storage_size * 2);
         }
-        m_dynamic_storages.emplace_back();
-        m_dynamic_storages.back() = (char*) malloc(2 * m_curr_storage_size * sizeof(char));
+        m_dynamic_storages.emplace_back((char*) malloc(2 * m_curr_storage_size * sizeof(char)));
         if (m_dynamic_storages.back() == nullptr) {
             SPDLOG_ERROR("Failed to allocate input buffer of size {}.", m_curr_storage_size);
             string err = "Lexer failed to find a match after checking entire buffer";
             throw std::runtime_error(err);
         }
-        if (m_fail_pos == 0) {
+        if (m_last_read_first_half == false) {
+            // buffer in correct order
             memcpy(m_dynamic_storages.back(), m_active_storage, m_curr_storage_size * sizeof(char));
         } else {
-            /// TODO: make a test case for this scenario
+            // second half of buffer was read before the first half of the buffer, so it needs to be flipped when copying
             memcpy(m_dynamic_storages.back(), m_active_storage + m_curr_storage_size * sizeof(char) / 2, m_curr_storage_size * sizeof(char) / 2);
             memcpy(m_dynamic_storages.back() + m_curr_storage_size * sizeof(char) / 2, m_active_storage, m_curr_storage_size * sizeof(char) / 2);
             flipped_static_buffer = true;
@@ -68,34 +67,8 @@ namespace compressor_frontend {
         m_active_storage = m_dynamic_storages.back();
         m_bytes_read = m_curr_storage_size / 2;
         m_curr_pos = m_curr_storage_size / 2;
-        m_fail_pos = 0;
+        read(reader);
         return flipped_static_buffer;
-    }
-
-    void InputBuffer::initial_update_after_read (size_t bytes_read) {
-        if (bytes_read < m_curr_storage_size / 2) {
-            m_finished_reading_file = true;
-        } else {
-            m_last_read_first_half_of_buf = !m_last_read_first_half_of_buf;
-        }
-        m_bytes_read += bytes_read;
-    }
-
-    void InputBuffer::update_after_read (size_t bytes_read) {
-        if (bytes_read < m_curr_storage_size / 2) {
-            m_finished_reading_file = true;
-        } else {
-            m_last_read_first_half_of_buf = !m_last_read_first_half_of_buf;
-        }
-        m_bytes_read += bytes_read;
-        if(m_bytes_read > m_curr_storage_size) {
-            m_bytes_read -= m_curr_storage_size;
-        }
-        if (m_consumed_pos >= m_curr_storage_size / 2) {
-            m_fail_pos = m_curr_storage_size / 2;
-        } else {
-            m_fail_pos = 0;
-        }
     }
 
     unsigned char InputBuffer::get_next_character () {
@@ -109,5 +82,23 @@ namespace compressor_frontend {
             m_curr_pos = 0;
         }
         return character;
+    }
+
+    void InputBuffer::read (ReaderInterface& reader) {
+        size_t bytes_read;
+        // read into the correct half of the buffer
+        uint32_t read_offset = 0;
+        if (m_last_read_first_half) {
+            read_offset = m_curr_storage_size / 2;
+        }
+        reader.read(m_active_storage + read_offset, m_curr_storage_size / 2, bytes_read);
+        m_last_read_first_half = !m_last_read_first_half;
+        if (bytes_read < m_curr_storage_size / 2) {
+            m_finished_reading_file = true;
+        }
+        m_bytes_read += bytes_read;
+        if (m_bytes_read > m_curr_storage_size) {
+            m_bytes_read -= m_curr_storage_size;
+        }
     }
 };

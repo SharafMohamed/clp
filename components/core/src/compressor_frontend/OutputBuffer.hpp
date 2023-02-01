@@ -5,6 +5,14 @@
 #include "Buffer.hpp"
 #include "Token.hpp"
 
+/**
+ * A buffer containing the tokenized output of the parser.
+ * The active buffer contains all the tokens from the current log message.
+ * The first token always contains the timestamp (if there is no timestamp the first token is invalid).
+ * For performance (runtime latency) it defaults to a static buffer and when more tokens are needed to be stored than the current capacity it switches to a
+ * dynamic buffer.
+ * Each time the capacity is exceeded a new dynamic buffer is added to the list of dynamic buffers.
+ */
 namespace compressor_frontend {
 
     class OutputBuffer : public Buffer<Token> {
@@ -25,7 +33,7 @@ namespace compressor_frontend {
             m_has_timestamp = has_timestamp;
         }
 
-        [[nodiscard]] bool get_has_timestamp () const {
+        [[nodiscard]] bool has_timestamp () const {
             return m_has_timestamp;
         }
 
@@ -33,29 +41,25 @@ namespace compressor_frontend {
             m_has_delimiters = has_delimiters;
         }
 
-        [[nodiscard]] bool get_has_delimiters () const {
+        [[nodiscard]] bool has_delimiters () const {
             return m_has_delimiters;
         }
 
-        void set_value (uint32_t pos, Token& value) {
+        void set_token (uint32_t pos, Token& value) {
             m_active_storage[pos] = value;
         }
 
-        void set_curr_value (Token& value) {
+        void set_curr_token (Token& value) {
             m_active_storage[m_curr_pos] = value;
         }
 
-        [[nodiscard]] const Token& get_value (uint32_t pos) const {
-            return m_active_storage[pos];
-        }
-
-        [[nodiscard]] const Token& get_curr_value () const {
+        [[nodiscard]] const Token& get_curr_token () const {
             return m_active_storage[m_curr_pos];
         }
 
     private:
         bool m_has_timestamp = false;
-        bool m_has_delimiters = false ;
+        bool m_has_delimiters = false;
     };
 }
 

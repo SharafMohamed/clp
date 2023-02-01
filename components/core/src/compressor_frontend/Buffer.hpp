@@ -8,21 +8,27 @@
 // Project Headers
 #include "Constants.hpp"
 
+/**
+ * A base class for keeping track of static and dynamic buffers needed for a growing buffer.
+ * The base class does not grow the buffer, the child class is responsible for doing this.
+ */
+
 namespace compressor_frontend {
-    template <typename type>
+    template<typename type>
     class Buffer {
     public:
         // Prevent copying of buffer as this will be really slow
-        Buffer(Buffer&&) = delete;
-        Buffer& operator=(const Buffer&) = delete;
+        Buffer (Buffer&&) = delete;
+
+        Buffer& operator= (const Buffer&) = delete;
 
         Buffer () {
             m_active_storage = m_static_storage;
             m_curr_storage_size = cStaticByteBuffSize;
         }
 
-        ~Buffer() {
-            for (type* dynamic_storage : m_dynamic_storages) {
+        ~Buffer () {
+            for (type* dynamic_storage: m_dynamic_storages) {
                 free(dynamic_storage);
             }
         }
@@ -48,7 +54,7 @@ namespace compressor_frontend {
         */
         virtual void reset () {
             m_curr_pos = 0;
-            for (type* dynamic_storage : m_dynamic_storages) {
+            for (type* dynamic_storage: m_dynamic_storages) {
                 free(dynamic_storage);
             }
             m_dynamic_storages.clear();
@@ -57,9 +63,9 @@ namespace compressor_frontend {
         }
 
     protected:
-        // variables
         uint32_t m_curr_pos;
         uint32_t m_curr_storage_size;
+        // Dynamic storage performs better as c-style arrays than as vectors
         type* m_active_storage;
         std::vector<type*> m_dynamic_storages;
         type m_static_storage[cStaticByteBuffSize];
