@@ -8,9 +8,9 @@
 /**
  * A buffer containing the tokenized output of the parser.
  * The active buffer contains all the tokens from the current log message.
- * The first token always contains the timestamp (if there is no timestamp the first token is invalid).
- * For performance (runtime latency) it defaults to a static buffer and when more tokens are needed to be stored than the current capacity it switches to a
- * dynamic buffer.
+ * The first token contains the timestamp (if there is no timestamp the first token is invalid).
+ * For performance (runtime latency) it defaults to a static buffer and when more tokens are needed
+ * to be stored than the current capacity it switches to a dynamic buffer.
  * Each time the capacity is exceeded a new dynamic buffer is added to the list of dynamic buffers.
  */
 namespace compressor_frontend {

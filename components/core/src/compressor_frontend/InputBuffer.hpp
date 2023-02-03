@@ -17,7 +17,7 @@ namespace compressor_frontend {
 
         /**
          * Checks if reading into the input buffer won't overwrite data not yet used
-         * (e.g., data being ovewritten is already compressed in the case of compression)
+         * (e.g., data being overwritten is already compressed in the case of compression)
          * @return bool
          */
         bool read_is_safe ();
@@ -77,6 +77,6 @@ namespace compressor_frontend {
         bool m_finished_reading_file;
         bool m_at_end_of_file;
     };
-};
+}
 
 #endif // COMPRESSOR_FRONTEND_INPUT_BUFFER_HPP
