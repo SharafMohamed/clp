@@ -109,13 +109,14 @@ TEST_CASE("Test creating log parser without delimiters", "[LALR1Parser][LogParse
                         "When using --schema-path, \"delimiters:\" line must be used.");
 }
 
-TEST_CASE("Test error for creating log file with delimiter in regex pattern", "[LALR1Parser][SchemaParser]") {
-    std::string file_path = "../tests/test_schema_files/schema_with_delimiter_in_regex_error.txt";
-    std::string file_name = boost::filesystem::canonical(file_path).string();
-    REQUIRE_THROWS_WITH(generate_log_parser(file_path), file_name + ":2: error: 'equals' has regex pattern which contains delimiter '='.\n"
-                                                        + "          equals:.*=.*\n"
-                                                        + "                 ^^^^^\n");
-}
+/// TODO: This test doesn't currently work because delimiters are allowed in schema files, and there is no option to disable this yet
+//TEST_CASE("Test error for creating log file with delimiter in regex pattern", "[LALR1Parser][SchemaParser]") {
+//    std::string file_path = "../tests/test_schema_files/schema_with_delimiter_in_regex_error.txt";
+//    std::string file_name = boost::filesystem::canonical(file_path).string();
+//    REQUIRE_THROWS_WITH(generate_log_parser(file_path), file_name + ":2: error: 'equals' has regex pattern which contains delimiter '='.\n"
+//                                                        + "          equals:.*=.*\n"
+//                                                        + "                 ^^^^^\n");
+//}
 
 /// TODO: This error check is performed correctly by CLP, but it is handled by something different now so this test will fail as is
 //TEST_CASE("Test error for missing log file", "[LALR1Parser][LogParser]") {
