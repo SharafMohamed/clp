@@ -34,6 +34,9 @@ namespace streaming_archive { namespace reader {
             }
         };
 
+        // Constructors
+        Archive(std::map<uint32_t, std::string>& id_symbol) : m_var_dictionary(id_symbol.size()) { }
+
         // Methods
         /**
          * Read the metadata file
@@ -49,7 +52,7 @@ namespace streaming_archive { namespace reader {
          * @throw streaming_archive::reader::Archive::OperationFailed if could not stat file or it isn't a directory or metadata is corrupted
          * @throw FileReader::OperationFailed if failed to open any dictionary
          */
-        void open (const std::string& path);
+        void open (const std::string& path, std::map<uint32_t, std::string>& id_symbol);
         void close ();
 
         /**
@@ -58,7 +61,7 @@ namespace streaming_archive { namespace reader {
          */
         void refresh_dictionaries ();
         const LogTypeDictionaryReader& get_logtype_dictionary () const;
-        const VariableDictionaryReader& get_var_dictionary () const;
+        const std::vector<VariableDictionaryReader>& get_var_dictionary () const;
 
         /**
          * Opens file with given path
@@ -101,7 +104,7 @@ namespace streaming_archive { namespace reader {
          * @return true if message was successfully decompressed, false otherwise
          * @throw TimestampPattern::OperationFailed if failed to insert timestamp
          */
-        bool decompress_message (File& file, const Message& compressed_msg, std::string& decompressed_msg, bool use_heuristic);
+        bool decompress_message (File& file, const Message& compressed_msg, std::string& decompressed_msg, std::map<uint32_t, std::string> id_symbol);
 
         void decompress_empty_directories (const std::string& output_dir);
 
@@ -127,7 +130,7 @@ namespace streaming_archive { namespace reader {
         std::string m_logs_dir_path;
         std::string m_segments_dir_path;
         LogTypeDictionaryReader m_logtype_dictionary;
-        VariableDictionaryReader m_var_dictionary;
+        std::vector<VariableDictionaryReader> m_var_dictionary;
 
         SegmentManager m_segment_manager;
 

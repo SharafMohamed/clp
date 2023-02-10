@@ -2,6 +2,7 @@
 
 // Standard C++ libraries
 #include <iostream>
+#include <memory>
 
 // Boost libraries
 #include <boost/filesystem/operations.hpp>
@@ -11,6 +12,7 @@
 #include <spdlog/spdlog.h>
 
 // Project headers
+#include "../compressor_frontend/LogParser.hpp"
 #include "../ErrorCode.hpp"
 #include "../FileWriter.hpp"
 #include "../GlobalMySQLMetadataDB.hpp"
@@ -27,7 +29,8 @@ using std::unique_ptr;
 using std::unordered_set;
 
 namespace clp {
-    bool decompress (CommandLineArguments& command_line_args, const unordered_set<string>& files_to_decompress, bool use_heuristic) {
+    bool decompress (CommandLineArguments& command_line_args,
+                     const unordered_set<string>& files_to_decompress) {
         ErrorCode error_code;
 
         // Create output directory in case it doesn't exist
@@ -60,8 +63,6 @@ namespace clp {
                     break;
             }
 
-            streaming_archive::reader::Archive archive_reader;
-
             boost::filesystem::path empty_directory_path;
 
             FileDecompressor file_decompressor;
@@ -81,8 +82,19 @@ namespace clp {
                         SPDLOG_WARN("Archive {} does not exist in '{}'.", archive_id, command_line_args.get_archives_dir());
                         continue;
                     }
+                    std::map<uint32_t, std::string> id_symbol;
+                    auto schema_file_path = archive_path / streaming_archive::cSchemaFileName;
+                    if (boost::filesystem::exists(schema_file_path)) {
+                        std::unique_ptr<compressor_frontend::LogParser> log_parser =
+                                std::make_unique<compressor_frontend::LogParser>(schema_file_path.string());
+                        id_symbol = log_parser->m_lexer.m_id_symbol;
+                    } else {
+                        id_symbol[0] = "heuristic";
+                    }
 
-                    archive_reader.open(archive_path.string());
+                    streaming_archive::reader::Archive archive_reader(id_symbol);
+                    archive_reader.open(archive_path.string(), id_symbol);
+
                     archive_reader.refresh_dictionaries();
 
                     archive_reader.decompress_empty_directories(command_line_args.get_output_dir());
@@ -94,7 +106,7 @@ namespace clp {
 
                         // Decompress file
                         if (false == file_decompressor.decompress_file(file_metadata_ix, command_line_args.get_output_dir(), archive_reader,
-                                                                       temp_path_to_final_path, use_heuristic))
+                                                                       temp_path_to_final_path, id_symbol))
                         {
                             return false;
                         }
@@ -112,7 +124,12 @@ namespace clp {
                 {
                     archive_ix->get_id(archive_id);
                     auto archive_path = archives_dir / archive_id;
-                    archive_reader.open(archive_path.string());
+
+                    std::map<uint32_t, std::string> id_symbol;
+                    id_symbol[0] = "heuristic";
+                    streaming_archive::reader::Archive archive_reader(id_symbol);
+
+                    archive_reader.open(archive_path.string(), id_symbol);
                     archive_reader.refresh_dictionaries();
 
                     // Decompress all splits with the given path
@@ -122,7 +139,7 @@ namespace clp {
 
                         // Decompress file
                         if (false == file_decompressor.decompress_file(file_metadata_ix, command_line_args.get_output_dir(), archive_reader,
-                                                                       temp_path_to_final_path, use_heuristic))
+                                                                       temp_path_to_final_path, id_symbol))
                         {
                             return false;
                         }
@@ -138,7 +155,11 @@ namespace clp {
                 {
                     archive_ix->get_id(archive_id);
                     auto archive_path = archives_dir / archive_id;
-                    archive_reader.open(archive_path.string());
+
+                    std::map<uint32_t, std::string> id_symbol;
+                    id_symbol[0] = "heuristic";
+                    streaming_archive::reader::Archive archive_reader(id_symbol);
+                    archive_reader.open(archive_path.string(), id_symbol);
                     archive_reader.refresh_dictionaries();
 
                     // Decompress files
@@ -152,7 +173,7 @@ namespace clp {
 
                         // Decompress file
                         if (false == file_decompressor.decompress_file(file_metadata_ix, command_line_args.get_output_dir(), archive_reader,
-                                                                       temp_path_to_final_path, use_heuristic))
+                                                                       temp_path_to_final_path, id_symbol))
                         {
                             return false;
                         }

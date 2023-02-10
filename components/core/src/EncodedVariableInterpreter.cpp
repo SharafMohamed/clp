@@ -3,6 +3,7 @@
 // C++ standard libraries
 #include <cassert>
 #include <cmath>
+#include <iomanip>
 
 // spdlog
 #include <spdlog/spdlog.h>
@@ -33,13 +34,62 @@ variable_dictionary_id_t EncodedVariableInterpreter::decode_var_dict_id (encoded
 }
 
 bool EncodedVariableInterpreter::convert_string_to_representable_hex_var (const string& value, encoded_variable_t& encoded_var) {
-    /// TODO: add checks to verify valid hex
+    constexpr size_t cMaxDigitsInRepresentableHexVar = 60/4;
+    /// TODO: Make a bit to track uppercase vs lowercase (don't allow mixed case)
+    constexpr size_t prefix_bit = 60;
+    constexpr size_t case_bit = 61;
+
+    bool has_prefix = false;
+    if(value.substr(0, 2) == "0x") {
+        has_prefix = true;
+    }
+
+    // zero-padding not allowed
+    if((!has_prefix && value[0] == '0') || (has_prefix && value[2] == '0')) {
+        return false;
+    }
+
+    // check size of hex component is less than max size
+    if((!has_prefix && value.size() > cMaxDigitsInRepresentableHexVar) || (has_prefix && value.size() > cMaxDigitsInRepresentableHexVar + 2)) {
+        return false;
+    }
+
+    // check case
+    bool is_all_lowercase = true;
+    bool is_all_uppercase = true;
+    size_t i = 0;
+    if(has_prefix) {
+        i = 2;
+    }
+    for(;i < value.size(); i++) {
+        char c = value[i];
+        if('a' <= c && c <= 'z') {
+            is_all_uppercase = false;
+        }
+        if('A' <= c && c <= 'Z') {
+            is_all_lowercase = false;
+        }
+    }
+
+    // case can't change
+    if(!is_all_lowercase && !is_all_uppercase) {
+        return false;
+    }
 
     int64_t result;
     if (false == convert_string_to_hex(value, result)) {
         // Conversion failed
         return false;
-    } else if (result >= m_var_dict_id_range_begin) {
+    }
+
+    if (has_prefix) {
+        result |= ((int64_t)1) << prefix_bit;
+    }
+    if(!is_all_lowercase) {
+        result |= ((int64_t)1) << case_bit;
+    }
+
+    if (result >= m_var_dict_id_range_begin) {
         // Value is in dictionary variable range, so cannot be converted
         return false;
     } else {
@@ -165,6 +215,36 @@ bool EncodedVariableInterpreter::convert_string_to_representable_double_var (con
     return true;
 }
 
+void EncodedVariableInterpreter::convert_encoded_hex_to_string (encoded_variable_t encoded_var,
+                                                                string& value) {
+    constexpr size_t prefix_bit = 60;
+    constexpr size_t case_bit = 61;
+
+    uint64_t encoded_hex;
+    std::stringstream stream;
+
+    static_assert(sizeof(encoded_hex) == sizeof(encoded_var),
+                  "sizeof(encoded_hex) != sizeof(encoded_var)");
+    // NOTE: We use memcpy rather than reinterpret_cast to avoid violating strict aliasing;
+    // a smart compiler should optimize it to a register move
+    std::memcpy(&encoded_hex, &encoded_var, sizeof(encoded_var));
+
+    size_t offset = 63 - prefix_bit;
+    if((encoded_hex << offset) >> (prefix_bit + offset) == 1) {
+        encoded_hex &= ~(((int64_t)1) << prefix_bit);
+        stream << "0x";
+    }
+
+    offset = 63 - case_bit;
+    if((encoded_hex << offset ) >> (case_bit + offset) == 1) {
+        encoded_hex &= ~(((int64_t)1) << case_bit);
+        stream << std::uppercase;
+    }
+
+    stream << std::hex << encoded_hex;
+    value = stream.str();
+}
+
 void EncodedVariableInterpreter::convert_encoded_double_to_string (encoded_variable_t encoded_var, string& value) {
     uint64_t encoded_double;
     static_assert(sizeof(encoded_double) == sizeof(encoded_var), "sizeof(encoded_double) != sizeof(encoded_var)");
@@ -251,23 +331,28 @@ void EncodedVariableInterpreter::encode_and_add_to_dictionary (const string& mes
     }
 }
 
-bool EncodedVariableInterpreter::decode_variables_into_message (const LogTypeDictionaryEntry& logtype_dict_entry, const VariableDictionaryReader& var_dict,
-                                                                const vector<encoded_variable_t>& encoded_vars, string& decompressed_msg, bool use_heuristic)
+bool EncodedVariableInterpreter::decode_variables_into_message (
+                                            const LogTypeDictionaryEntry& logtype_dict_entry,
+                                            const std::vector<VariableDictionaryReader>& var_dict,
+                                            const vector<encoded_variable_t>& encoded_vars,
+                                            string& decompressed_msg,
+                                            std::map<uint32_t, std::string> id_symbol)
 {
     size_t num_vars_in_logtype = logtype_dict_entry.get_num_vars();
 
     // Ensure the number of variables in the logtype matches the number of encoded variables given
     const auto& logtype_value = logtype_dict_entry.get_value();
     if (num_vars_in_logtype != encoded_vars.size()) {
-        SPDLOG_ERROR("EncodedVariableInterpreter: Logtype '{}' contains {} variables, but {} were given for decoding.", logtype_value.c_str(),
-                     num_vars_in_logtype, encoded_vars.size());
+        SPDLOG_ERROR("EncodedVariableInterpreter: Logtype '{}' contains {} variables, but {} were "
+                     "given for decoding.", logtype_value.c_str(), num_vars_in_logtype,
+                     encoded_vars.size());
         return false;
     }
 
     LogTypeDictionaryEntry::VarDelim var_delim;
     char schema_id;
     size_t constant_begin_pos = 0;
-    string double_str;
+    string decoded_str;
     for (size_t i = 0; i < num_vars_in_logtype; ++i) {
         size_t var_position = logtype_dict_entry.get_var_info(i, var_delim, schema_id);
 
@@ -277,19 +362,38 @@ bool EncodedVariableInterpreter::decode_variables_into_message (const LogTypeDic
         uint8_t delim_len = 1;
         if (LogTypeDictionaryEntry::VarDelim::NonDouble == var_delim) {
             if (!is_var_dict_id(encoded_vars[i])) {
-                decompressed_msg += std::to_string(encoded_vars[i]);
+                if (id_symbol.size() == 1) {
+                    decompressed_msg += std::to_string(encoded_vars[i]);
+                } else {
+                    switch (schema_id) {
+                        case (int) compressor_frontend::SymbolID::TokenHexId: {
+                            convert_encoded_hex_to_string(encoded_vars[i], decoded_str);
+                            decompressed_msg += decoded_str;
+                            break;
+                        }
+                        case (int) compressor_frontend::SymbolID::TokenIntId: {
+                            decompressed_msg += std::to_string(encoded_vars[i]);
+                            break;
+                        }
+                        default:
+                            SPDLOG_ERROR("Encoded var with invalid type {}", id_symbol[schema_id]);
+                    }
+                }
             } else {
                 auto var_dict_id = decode_var_dict_id(encoded_vars[i]);
-                decompressed_msg += var_dict.get_value(var_dict_id);
+                if(id_symbol.size() == 1) {
+                    decompressed_msg += var_dict[0].get_value(var_dict_id);
+                } else {
+                    decompressed_msg += var_dict[schema_id].get_value(var_dict_id);
+                }
             }
-            if (use_heuristic == false) {
-                /// TODO: if two level-dictionary change var_dict.get_value(var_dict_id) to use schema_id
+            if (id_symbol.size() != 1) {
                 delim_len += 1;
             }
         } else { // LogTypeDictionaryEntry::VarDelim::Double == var_delim
-            convert_encoded_double_to_string(encoded_vars[i], double_str);
+            convert_encoded_double_to_string(encoded_vars[i], decoded_str);
 
-            decompressed_msg += double_str;
+            decompressed_msg += decoded_str;
         }
         // Move past the variable delimiter
         constant_begin_pos = var_position + delim_len;

@@ -71,6 +71,12 @@ public:
      */
     static bool convert_string_to_representable_double_var (const std::string& value, encoded_variable_t& encoded_var);
     /**
+     * Converts the given encoded hex into a string
+     * @param encoded_var
+     * @param value
+     */
+    static void convert_encoded_hex_to_string (encoded_variable_t encoded_var, std::string& value);
+    /**
      * Converts the given encoded double into a string
      * @param encoded_var
      * @param value
@@ -95,8 +101,11 @@ public:
      * @param decompressed_msg
      * @return true if successful, false otherwise
      */
-    static bool decode_variables_into_message (const LogTypeDictionaryEntry& logtype_dict_entry, const VariableDictionaryReader& var_dict,
-                                               const std::vector<encoded_variable_t>& encoded_vars, std::string& decompressed_msg, bool use_heuristic);
+    static bool decode_variables_into_message (const LogTypeDictionaryEntry& logtype_dict_entry,
+                                            const std::vector<VariableDictionaryReader>& var_dict,
+                                            const std::vector<encoded_variable_t>& encoded_vars,
+                                            std::string& decompressed_msg,
+                                            std::map<uint32_t, std::string> id_symbol);
 
     /**
      * Encodes a string-form variable, and if it is dictionary variable, searches for its ID in the given variable dictionary

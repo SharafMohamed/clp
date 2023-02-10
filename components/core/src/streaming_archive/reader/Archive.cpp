@@ -33,7 +33,7 @@ namespace streaming_archive { namespace reader {
         file_reader.close();
     }
 
-    void Archive::open (const string& path) {
+    void Archive::open (const string& path, std::map<uint32_t, std::string>& id_symbol) {
         // Determine whether path is file or directory
         struct stat path_stat = {};
         const char* path_c_str = path.c_str();
@@ -97,8 +97,9 @@ namespace streaming_archive { namespace reader {
         string var_segment_index_path = m_path;
         var_segment_index_path += '/';
         var_segment_index_path += cVarSegmentIndexFilename;
-        m_var_dictionary.open(var_dict_path, var_segment_index_path);
-
+        for(size_t i = 0; i < id_symbol.size(); i++) {
+            m_var_dictionary[i].open(var_dict_path + "_" + id_symbol[i], var_segment_index_path + "_" + id_symbol[i]);
+        }
         // Open segment manager
         m_segments_dir_path = m_path;
         m_segments_dir_path += '/';
@@ -113,7 +114,9 @@ namespace streaming_archive { namespace reader {
 
     void Archive::close () {
         m_logtype_dictionary.close();
-        m_var_dictionary.close();
+        for(size_t i = 0; i < m_var_dictionary.size(); i++) {
+            m_var_dictionary[i].close();
+        }
         m_segment_manager.close();
         m_segments_dir_path.clear();
         m_logs_dir_path.clear();
@@ -123,7 +126,9 @@ namespace streaming_archive { namespace reader {
 
     void Archive::refresh_dictionaries () {
         m_logtype_dictionary.read_new_entries();
-        m_var_dictionary.read_new_entries();
+        for(size_t i = 0; i < m_var_dictionary.size(); i++) {
+            m_var_dictionary[i].read_new_entries();
+        }
     }
 
     ErrorCode Archive::open_file (File& file, MetadataDB::FileIterator& file_metadata_ix, bool read_ahead) {
@@ -142,7 +147,7 @@ namespace streaming_archive { namespace reader {
         return m_logtype_dictionary;
     }
 
-    const VariableDictionaryReader& Archive::get_var_dictionary () const {
+    const std::vector<VariableDictionaryReader>& Archive::get_var_dictionary () const {
         return m_var_dictionary;
     }
 
@@ -158,14 +163,14 @@ namespace streaming_archive { namespace reader {
         return file.get_next_message(msg);
     }
 
-    bool Archive::decompress_message (File& file, const Message& compressed_msg, string& decompressed_msg, bool use_heuristic) {
+    bool Archive::decompress_message (File& file, const Message& compressed_msg, string& decompressed_msg, std::map<uint32_t, std::string> id_symbol) {
         decompressed_msg.clear();
 
         // Build original message content
         const logtype_dictionary_id_t logtype_id = compressed_msg.get_logtype_id();
         const auto& logtype_entry = m_logtype_dictionary.get_entry(logtype_id);
         if (!EncodedVariableInterpreter::decode_variables_into_message(logtype_entry, m_var_dictionary, compressed_msg.get_vars(), decompressed_msg,
-                                                                       use_heuristic)) {
+                                                                       id_symbol)) {
             SPDLOG_ERROR("streaming_archive::reader::Archive: Failed to decompress variables from logtype id {}", compressed_msg.get_logtype_id());
             return false;
         }
