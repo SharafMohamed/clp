@@ -239,6 +239,8 @@ set(SOURCE_FILES_clp
         src/Profiler.hpp
         src/Query.cpp
         src/Query.hpp
+        src/QueryToken.cpp
+        src/QueryToken.hpp
         src/ReaderInterface.cpp
         src/ReaderInterface.hpp
         src/SQLiteDB.cpp
@@ -392,6 +394,8 @@ set(SOURCE_FILES_clg
         src/Profiler.hpp
         src/Query.cpp
         src/Query.hpp
+        src/QueryToken.cpp
+        src/QueryToken.hpp
         src/ReaderInterface.cpp
         src/ReaderInterface.hpp
         src/SQLiteDB.cpp
@@ -532,6 +536,8 @@ set(SOURCE_FILES_clo
         src/Profiler.hpp
         src/Query.cpp
         src/Query.hpp
+        src/QueryToken.cpp
+        src/QueryToken.hpp
         src/ReaderInterface.cpp
         src/ReaderInterface.hpp
         src/SQLiteDB.cpp
@@ -708,6 +714,8 @@ set(SOURCE_FILES_unitTest
         src/Profiler.hpp
         src/Query.cpp
         src/Query.hpp
+        src/QueryToken.cpp
+        src/QueryToken.hpp
         src/ReaderInterface.cpp
         src/ReaderInterface.hpp
         src/SQLiteDB.cpp

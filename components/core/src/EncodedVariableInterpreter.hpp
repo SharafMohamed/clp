@@ -105,7 +105,7 @@ public:
                                             const std::vector<VariableDictionaryReader>& var_dict,
                                             const std::vector<encoded_variable_t>& encoded_vars,
                                             std::string& decompressed_msg,
-                                            std::map<uint32_t, std::string> id_symbol);
+                                            std::map<uint32_t, std::string>& id_symbol);
 
     /**
      * Encodes a string-form variable, and if it is dictionary variable, searches for its ID in the given variable dictionary
@@ -117,7 +117,7 @@ public:
      * @return true if variable is a non-dictionary variable or was found in the given variable dictionary
      * @return false otherwise
      */
-    static bool encode_and_search_dictionary (const std::string& var_str, const VariableDictionaryReader& var_dict, bool ignore_case, std::string& logtype,
+    static bool encode_and_search_dictionary (const std::string& var_str, const std::vector<VariableDictionaryReader>& var_dict, bool ignore_case, std::string& logtype,
                                               SubQuery& sub_query);
     /**
      * Search for the given string-form variable in the variable dictionary, encode any matches, and add them to the given sub-query
@@ -127,7 +127,7 @@ public:
      * @param sub_query
      * @return true if any match found, false otherwise
      */
-    static bool wildcard_search_dictionary_and_get_encoded_matches (const std::string& var_wildcard_str, const VariableDictionaryReader& var_dict,
+    static bool wildcard_search_dictionary_and_get_encoded_matches (const std::string& var_wildcard_str, const std::vector<VariableDictionaryReader>& var_dict,
                                                                     bool ignore_case, SubQuery& sub_query);
 
 private:

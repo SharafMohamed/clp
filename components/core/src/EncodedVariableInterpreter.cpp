@@ -336,7 +336,7 @@ bool EncodedVariableInterpreter::decode_variables_into_message (
                                             const std::vector<VariableDictionaryReader>& var_dict,
                                             const vector<encoded_variable_t>& encoded_vars,
                                             string& decompressed_msg,
-                                            std::map<uint32_t, std::string> id_symbol)
+                                            std::map<uint32_t, std::string>& id_symbol)
 {
     size_t num_vars_in_logtype = logtype_dict_entry.get_num_vars();
 
@@ -406,7 +406,7 @@ bool EncodedVariableInterpreter::decode_variables_into_message (
     return true;
 }
 
-bool EncodedVariableInterpreter::encode_and_search_dictionary (const string& var_str, const VariableDictionaryReader& var_dict, bool ignore_case,
+bool EncodedVariableInterpreter::encode_and_search_dictionary (const string& var_str, const std::vector<VariableDictionaryReader>& var_dict, bool ignore_case,
                                                                string& logtype, SubQuery& sub_query)
 {
     size_t length = var_str.length();
@@ -422,7 +422,13 @@ bool EncodedVariableInterpreter::encode_and_search_dictionary (const string& var
         LogTypeDictionaryEntry::add_double_var(logtype);
         sub_query.add_non_dict_var(encoded_var);
     } else {
-        auto entry = var_dict.get_entry_matching_value(var_str, ignore_case);
+        const VariableDictionaryEntry* entry;
+        for (const auto & dict : var_dict) {
+            entry = dict.get_entry_matching_value(var_str, ignore_case);
+            if (nullptr != entry) {
+                break;
+            }
+        }
         if (nullptr == entry) {
             // Not in dictionary
             return false;
@@ -437,17 +443,22 @@ bool EncodedVariableInterpreter::encode_and_search_dictionary (const string& var
 }
 
 bool EncodedVariableInterpreter::wildcard_search_dictionary_and_get_encoded_matches (const std::string& var_wildcard_str,
-                                                                                     const VariableDictionaryReader& var_dict,
+                                                                                     const std::vector<VariableDictionaryReader>& var_dict,
                                                                                      bool ignore_case, SubQuery& sub_query)
 {
     // Find matches
     unordered_set<const VariableDictionaryEntry*> var_dict_entries;
-    var_dict.get_entries_matching_wildcard_string(var_wildcard_str, ignore_case, var_dict_entries);
-    if (var_dict_entries.empty()) {
-        // Not in dictionary
+    bool found = false;
+    for (const auto & dict : var_dict) {
+        dict.get_entries_matching_wildcard_string(var_wildcard_str, ignore_case, var_dict_entries);
+        if (var_dict_entries.empty() == false) {
+            found = true;
+            break;
+        }
+    }
+    if (found == false) {
         return false;
     }
-
     // Encode matches
     unordered_set<encoded_variable_t> encoded_vars;
     for (auto entry : var_dict_entries) {

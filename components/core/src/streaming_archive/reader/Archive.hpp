@@ -104,7 +104,7 @@ namespace streaming_archive { namespace reader {
          * @return true if message was successfully decompressed, false otherwise
          * @throw TimestampPattern::OperationFailed if failed to insert timestamp
          */
-        bool decompress_message (File& file, const Message& compressed_msg, std::string& decompressed_msg, std::map<uint32_t, std::string> id_symbol);
+        bool decompress_message (File& file, const Message& compressed_msg, std::string& decompressed_msg, std::map<uint32_t, std::string>& id_symbol);
 
         void decompress_empty_directories (const std::string& output_dir);
 

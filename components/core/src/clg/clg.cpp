@@ -38,7 +38,7 @@ using streaming_archive::reader::Message;
  * @param archive_reader
  * @return true on success, false otherwise
  */
-static bool open_archive (const string& archive_path, Archive& archive_reader);
+static bool open_archive (const string& archive_path, Archive& archive_reader, std::map<uint32_t, std::string>& id_symbol);
 /**
  * Searches the archive with the given parameters
  * @param search_strings
@@ -64,7 +64,7 @@ static bool open_compressed_file (MetadataDB::FileIterator& file_metadata_ix, Ar
  * @return The total number of matches found across all files
  */
 static size_t search_files (vector<Query>& queries, CommandLineArguments::OutputMethod output_method, Archive& archive,
-                            MetadataDB::FileIterator& file_metadata_ix, bool use_heuristic);
+                            MetadataDB::FileIterator& file_metadata_ix, bool use_heuristic, std::map<uint32_t, std::string>& id_symbol);
 /**
  * Prints search result to stdout in text format
  * @param orig_file_path
@@ -98,12 +98,12 @@ static GlobalMetadataDB::ArchiveIterator* get_archive_iterator (GlobalMetadataDB
     }
 }
 
-static bool open_archive (const string& archive_path, Archive& archive_reader) {
+static bool open_archive (const string& archive_path, Archive& archive_reader, std::map<uint32_t, std::string>& id_symbol) {
     ErrorCode error_code;
 
     try {
         // Open archive
-        archive_reader.open(archive_path);
+        archive_reader.open(archive_path, id_symbol);
     } catch (TraceableException& e) {
         error_code = e.get_error_code();
         if (ErrorCode_errno == error_code) {
@@ -132,7 +132,8 @@ static bool open_archive (const string& archive_path, Archive& archive_reader) {
 }
 
 static bool search (const vector<string>& search_strings, CommandLineArguments& command_line_args, Archive& archive,
-                    compressor_frontend::lexers::ByteLexer& forward_lexer, compressor_frontend::lexers::ByteLexer& reverse_lexer, bool use_heuristic) {
+                    compressor_frontend::lexers::ByteLexer& forward_lexer, compressor_frontend::lexers::ByteLexer& reverse_lexer, bool use_heuristic,
+                    std::map<uint32_t, std::string>& id_symbol) {
     ErrorCode error_code;
     auto search_begin_ts = command_line_args.get_search_begin_ts();
     auto search_end_ts = command_line_args.get_search_end_ts();
@@ -145,7 +146,7 @@ static bool search (const vector<string>& search_strings, CommandLineArguments& 
         for (const auto& search_string : search_strings) {
             Query query;
             if (Grep::process_raw_query(archive, search_string, search_begin_ts, search_end_ts, command_line_args.ignore_case(), query, forward_lexer, 
-                                        reverse_lexer, use_heuristic)) {
+                                        reverse_lexer, use_heuristic, id_symbol)) {
                 no_queries_match = false;
 
                 if (query.contains_sub_queries() == false) {
@@ -173,14 +174,14 @@ static bool search (const vector<string>& search_strings, CommandLineArguments& 
             size_t num_matches;
             if (is_superseding_query) {
                 auto file_metadata_ix = archive.get_file_iterator(search_begin_ts, search_end_ts, command_line_args.get_file_path());
-                num_matches = search_files(queries, command_line_args.get_output_method(), archive, *file_metadata_ix, use_heuristic);
+                num_matches = search_files(queries, command_line_args.get_output_method(), archive, *file_metadata_ix, use_heuristic, id_symbol);
             } else {
                 auto file_metadata_ix_ptr = archive.get_file_iterator(search_begin_ts, search_end_ts, command_line_args.get_file_path(), cInvalidSegmentId);
                 auto& file_metadata_ix = *file_metadata_ix_ptr;
-                num_matches = search_files(queries, command_line_args.get_output_method(), archive, file_metadata_ix, use_heuristic);
+                num_matches = search_files(queries, command_line_args.get_output_method(), archive, file_metadata_ix, use_heuristic, id_symbol);
                 for (auto segment_id : ids_of_segments_to_search) {
                     file_metadata_ix.set_segment_id(segment_id);
-                    num_matches += search_files(queries, command_line_args.get_output_method(), archive, file_metadata_ix, use_heuristic);
+                    num_matches += search_files(queries, command_line_args.get_output_method(), archive, file_metadata_ix, use_heuristic, id_symbol);
                 }
             }
             SPDLOG_DEBUG("# matches found: {}", num_matches);
@@ -217,7 +218,7 @@ static bool open_compressed_file (MetadataDB::FileIterator& file_metadata_ix, Ar
 }
 
 static size_t search_files (vector<Query>& queries, const CommandLineArguments::OutputMethod output_method, Archive& archive,
-                            MetadataDB::FileIterator& file_metadata_ix, bool use_heuristic)
+                            MetadataDB::FileIterator& file_metadata_ix, bool use_heuristic, std::map<uint32_t, std::string>& id_symbol)
 {
     size_t num_matches = 0;
 
@@ -246,7 +247,7 @@ static size_t search_files (vector<Query>& queries, const CommandLineArguments::
 
             for (const auto& query : queries) {
                 archive.reset_file_indices(compressed_file);
-                num_matches += Grep::search_and_output(query, SIZE_MAX, archive, compressed_file, output_func, output_func_arg, use_heuristic);
+                num_matches += Grep::search_and_output(query, SIZE_MAX, archive, compressed_file, output_func, output_func_arg, use_heuristic, id_symbol);
             }
         }
         archive.close_file(compressed_file);
@@ -395,7 +396,6 @@ int main (int argc, const char* argv[]) {
     compressor_frontend::lexers::ByteLexer* reverse_lexer_ptr;
 
     string archive_id;
-    Archive archive_reader;
     for (auto archive_ix = std::unique_ptr<GlobalMetadataDB::ArchiveIterator>(get_archive_iterator(*global_metadata_db, command_line_args.get_file_path()));
             archive_ix->contains_element(); archive_ix->get_next())
     {
@@ -406,13 +406,9 @@ int main (int argc, const char* argv[]) {
             SPDLOG_WARN("Archive {} does not exist in '{}'.", archive_id, command_line_args.get_archives_dir());
             continue;
         }
-
-        // Open archive
-        if (!open_archive(archive_path.string(), archive_reader)) {
-            return -1;
-        }
         
         // Generate lexer if schema file exists
+        std::map<uint32_t, std::string> id_symbol;
         auto schema_file_path = archive_path / streaming_archive::cSchemaFileName;
         bool use_heuristic = true;
         if (std::filesystem::exists(schema_file_path)) {
@@ -452,10 +448,19 @@ int main (int argc, const char* argv[]) {
                 reverse_lexer_ptr = &one_time_use_reverse_lexer;
                 load_lexer_from_file(schema_file_path, false, one_time_use_reverse_lexer);
             }
+            id_symbol = forward_lexer_ptr->m_id_symbol;
+        } else {
+            id_symbol[0] = "heuristic";
+        }
+
+        // Open archive
+        Archive archive_reader(id_symbol);
+        if (!open_archive(archive_path.string(), archive_reader, id_symbol)) {
+            return -1;
         }
 
         // Perform search
-        if (!search(search_strings, command_line_args, archive_reader, *forward_lexer_ptr, *reverse_lexer_ptr, use_heuristic)) {
+        if (!search(search_strings, command_line_args, archive_reader, *forward_lexer_ptr, *reverse_lexer_ptr, use_heuristic, id_symbol)) {
             return -1;
         }
         archive_reader.close();

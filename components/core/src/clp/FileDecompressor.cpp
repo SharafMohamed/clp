@@ -12,7 +12,7 @@ using std::string;
 namespace clp {
     bool FileDecompressor::decompress_file (streaming_archive::MetadataDB::FileIterator& file_metadata_ix, const string& output_dir,
                                             streaming_archive::reader::Archive& archive_reader, std::unordered_map<string, string>& temp_path_to_final_path,
-                                            std::map<uint32_t, std::string> id_symbol)
+                                            std::map<uint32_t, std::string>& id_symbol)
     {
         // Open compressed file
         auto error_code = archive_reader.open_file(m_encoded_file, file_metadata_ix, true);

@@ -38,7 +38,7 @@ public:
      */
     static bool process_raw_query (const streaming_archive::reader::Archive& archive, const std::string& search_string, epochtime_t search_begin_ts,
                                    epochtime_t search_end_ts, bool ignore_case, Query& query, compressor_frontend::lexers::ByteLexer& forward_lexer,
-                                   compressor_frontend::lexers::ByteLexer& reverse_lexer, bool use_heuristic);
+                                   compressor_frontend::lexers::ByteLexer& reverse_lexer, bool use_heuristic, std::map<uint32_t, std::string>& id_symbol);
 
     /**
      * Returns bounds of next potential variable (either a definite variable or a token with wildcards)
@@ -86,9 +86,10 @@ public:
      */
     static size_t search_and_output (const Query& query, size_t limit, streaming_archive::reader::Archive& archive,
                                      streaming_archive::reader::File& compressed_file, OutputFunc output_func, void* output_func_arg,
-                                     bool use_heuristic);
+                                     bool use_heuristic, std::map<uint32_t, std::string>& id_symbol);
     static bool search_and_decompress (const Query& query, streaming_archive::reader::Archive& archive, streaming_archive::reader::File& compressed_file,
-                                       streaming_archive::reader::Message& compressed_msg, std::string& decompressed_msg, bool use_heuristic);
+                                       streaming_archive::reader::Message& compressed_msg, std::string& decompressed_msg, bool use_heuristic,
+                                       std::map<uint32_t, std::string>& id_symbol);
     /**
      * Searches a file with the given query without outputting the results
      * @param query
@@ -100,7 +101,7 @@ public:
      * @throw TimestampPattern::OperationFailed if failed to insert timestamp into message
      */
     static size_t search (const Query& query, size_t limit, streaming_archive::reader::Archive& archive, streaming_archive::reader::File& compressed_file,
-                          bool use_heuristic);
+                          bool use_heuristic, std::map<uint32_t, std::string>& id_symbol);
 };
 
 #endif // GREP_HPP
