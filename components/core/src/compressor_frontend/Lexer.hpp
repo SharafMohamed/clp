@@ -17,7 +17,7 @@
 #include "finite_automata/RegexAST.hpp"
 #include "finite_automata/RegexDFA.hpp"
 #include "finite_automata/RegexNFA.hpp"
-#include "InputBuffer.hpp"
+#include "LogInputBuffer.hpp"
 #include "Token.hpp"
 
 using compressor_frontend::finite_automata::RegexAST;
@@ -123,7 +123,7 @@ namespace compressor_frontend {
          * @return Token
          * @throw runtime_error("Input buffer about to overflow")
          */
-        Token scan_new (InputBuffer& input_buffer);
+        Token scan_new (LogInputBuffer& input_buffer);
 
         /**
          * scan(), but with wild wildcards in the input string (for search)
@@ -138,7 +138,7 @@ namespace compressor_frontend {
          * @param wildcard
          * @return Token
          */
-        Token scan_with_wildcard_new (InputBuffer& input_buffer, char wildcard);
+        Token scan_with_wildcard_new (LogInputBuffer& input_buffer, char wildcard);
 
         /**
          * Sets the position of where the last reduce was performed,
@@ -176,7 +176,7 @@ namespace compressor_frontend {
          * Get next character from the input buffer
          * @return unsigned char
          */
-        unsigned char get_next_character_new (InputBuffer& input_buffer);
+        unsigned char get_next_character_new (LogInputBuffer& input_buffer);
 
         /**
          * Return epsilon_closure over m_epsilon_transitions

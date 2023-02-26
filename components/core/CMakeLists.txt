@@ -170,8 +170,8 @@ set(SOURCE_FILES_clp
         src/compressor_frontend/finite_automata/RegexNFA.tpp
         src/compressor_frontend/finite_automata/UnicodeIntervalTree.hpp
         src/compressor_frontend/finite_automata/UnicodeIntervalTree.tpp
-        src/compressor_frontend/InputBuffer.cpp
-        src/compressor_frontend/InputBuffer.hpp
+    src/compressor_frontend/LogInputBuffer.cpp
+    src/compressor_frontend/LogInputBuffer.hpp
         src/compressor_frontend/LALR1Parser.cpp
         src/compressor_frontend/LALR1Parser.hpp
         src/compressor_frontend/LALR1Parser.tpp
@@ -179,8 +179,8 @@ set(SOURCE_FILES_clp
         src/compressor_frontend/Lexer.tpp
         src/compressor_frontend/LogParser.cpp
         src/compressor_frontend/LogParser.hpp
-        src/compressor_frontend/OutputBuffer.cpp
-        src/compressor_frontend/OutputBuffer.hpp
+    src/compressor_frontend/TokenOutputBuffer.cpp
+    src/compressor_frontend/TokenOutputBuffer.hpp
         src/compressor_frontend/SchemaParser.cpp
         src/compressor_frontend/SchemaParser.hpp
         src/compressor_frontend/Token.cpp
@@ -335,15 +335,15 @@ set(SOURCE_FILES_clg
         src/compressor_frontend/finite_automata/RegexNFA.tpp
         src/compressor_frontend/finite_automata/UnicodeIntervalTree.hpp
         src/compressor_frontend/finite_automata/UnicodeIntervalTree.tpp
-        src/compressor_frontend/InputBuffer.cpp
-        src/compressor_frontend/InputBuffer.hpp
+    src/compressor_frontend/LogInputBuffer.cpp
+    src/compressor_frontend/LogInputBuffer.hpp
         src/compressor_frontend/LALR1Parser.cpp
         src/compressor_frontend/LALR1Parser.hpp
         src/compressor_frontend/LALR1Parser.tpp
         src/compressor_frontend/Lexer.hpp
         src/compressor_frontend/Lexer.tpp
-        src/compressor_frontend/OutputBuffer.cpp
-        src/compressor_frontend/OutputBuffer.hpp
+    src/compressor_frontend/TokenOutputBuffer.cpp
+    src/compressor_frontend/TokenOutputBuffer.hpp
         src/compressor_frontend/SchemaParser.cpp
         src/compressor_frontend/SchemaParser.hpp
         src/compressor_frontend/Token.cpp
@@ -487,15 +487,15 @@ set(SOURCE_FILES_clo
         src/compressor_frontend/finite_automata/RegexNFA.tpp
         src/compressor_frontend/finite_automata/UnicodeIntervalTree.hpp
         src/compressor_frontend/finite_automata/UnicodeIntervalTree.tpp
-        src/compressor_frontend/InputBuffer.cpp
-        src/compressor_frontend/InputBuffer.hpp
+    src/compressor_frontend/LogInputBuffer.cpp
+    src/compressor_frontend/LogInputBuffer.hpp
         src/compressor_frontend/LALR1Parser.cpp
         src/compressor_frontend/LALR1Parser.hpp
         src/compressor_frontend/LALR1Parser.tpp
         src/compressor_frontend/Lexer.hpp
         src/compressor_frontend/Lexer.tpp
-        src/compressor_frontend/OutputBuffer.cpp
-        src/compressor_frontend/OutputBuffer.hpp
+    src/compressor_frontend/TokenOutputBuffer.cpp
+    src/compressor_frontend/TokenOutputBuffer.hpp
         src/compressor_frontend/SchemaParser.cpp
         src/compressor_frontend/SchemaParser.hpp
         src/compressor_frontend/Token.cpp
@@ -643,8 +643,8 @@ set(SOURCE_FILES_unitTest
         src/compressor_frontend/finite_automata/RegexNFA.tpp
         src/compressor_frontend/finite_automata/UnicodeIntervalTree.hpp
         src/compressor_frontend/finite_automata/UnicodeIntervalTree.tpp
-        src/compressor_frontend/InputBuffer.cpp
-        src/compressor_frontend/InputBuffer.hpp
+    src/compressor_frontend/LogInputBuffer.cpp
+    src/compressor_frontend/LogInputBuffer.hpp
         src/compressor_frontend/LALR1Parser.cpp
         src/compressor_frontend/LALR1Parser.hpp
         src/compressor_frontend/LALR1Parser.tpp
@@ -652,8 +652,8 @@ set(SOURCE_FILES_unitTest
         src/compressor_frontend/Lexer.tpp
         src/compressor_frontend/LogParser.cpp
         src/compressor_frontend/LogParser.hpp
-        src/compressor_frontend/OutputBuffer.cpp
-        src/compressor_frontend/OutputBuffer.hpp
+    src/compressor_frontend/TokenOutputBuffer.cpp
+    src/compressor_frontend/TokenOutputBuffer.hpp
         src/compressor_frontend/SchemaParser.cpp
         src/compressor_frontend/SchemaParser.hpp
         src/compressor_frontend/Token.cpp

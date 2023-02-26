@@ -11,12 +11,11 @@
 // Project headers
 #include "../Stopwatch.hpp"
 #include "LALR1Parser.hpp"
-#include "InputBuffer.hpp"
-#include "OutputBuffer.hpp"
+#include "LogInputBuffer.hpp"
+#include "TokenOutputBuffer.hpp"
 #include "SchemaParser.hpp"
 
 namespace compressor_frontend {
-
     using finite_automata::RegexDFAByteState;
     using finite_automata::RegexNFAByteState;
 
@@ -36,7 +35,7 @@ namespace compressor_frontend {
          * Reset the parser. Return true if EOF was reached, false otherwise.
          * @param output_buffer
          */
-        void reset_new (OutputBuffer& output_buffer);
+        void reset_new (TokenOutputBuffer& output_buffer);
 
         /**
          * Initialize the parser. Return true if EOF was reached, false otherwise.
@@ -44,7 +43,7 @@ namespace compressor_frontend {
          * @param output_buffer
          * @return bool
          */
-        bool init (InputBuffer& input_buffer, OutputBuffer& output_buffer);
+        bool init (LogInputBuffer& input_buffer, TokenOutputBuffer& output_buffer);
 
         /**
          * /// TODO: this description will need to change after adding it directly into the dictionary writer
@@ -52,7 +51,7 @@ namespace compressor_frontend {
          * @param buffer
          * @return int
          */
-        ParsingAction parse_new (InputBuffer& input_buffer, OutputBuffer& output_buffer);
+        ParsingAction parse_new (LogInputBuffer& input_buffer, TokenOutputBuffer& output_buffer);
 
         void flip_lexer_states(uint32_t old_storage_size) {
             m_lexer.flip_states(old_storage_size);
@@ -67,7 +66,7 @@ namespace compressor_frontend {
          * Request the next symbol from the lexer
          * @return Token
          */
-        Token get_next_symbol_new (InputBuffer& input_buffer);
+        Token get_next_symbol_new (LogInputBuffer& input_buffer);
 
         /**
          * Add delimiters (originally from the schema AST from the user defined schema) to the log parser

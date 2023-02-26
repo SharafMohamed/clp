@@ -114,13 +114,13 @@ namespace compressor_frontend {
     }
 
 
-    void LogParser::reset_new(OutputBuffer& output_buffer) {
+    void LogParser::reset_new(TokenOutputBuffer& output_buffer) {
         m_lexer.reset_new();
         output_buffer.set_has_delimiters(m_lexer.get_has_delimiters());
     }
 
     /// TODO: if the first text is a variable in the no timestamp case you lose the first variable to static text since it has no leading delim
-    bool LogParser::init (InputBuffer& input_buffer, OutputBuffer& output_buffer) {
+    bool LogParser::init (LogInputBuffer& input_buffer, TokenOutputBuffer& output_buffer) {
         Token next_token = get_next_symbol_new(input_buffer);
         output_buffer.set_token(0, next_token);
         if (next_token.m_type_ids_ptr->at(0) == (int) SymbolID::TokenEndID) {
@@ -128,17 +128,17 @@ namespace compressor_frontend {
         }
         if (next_token.m_type_ids_ptr->at(0) == (int) SymbolID::TokenFirstTimestampId) {
             output_buffer.set_has_timestamp(true);
-            output_buffer.set_curr_pos(1);
+            output_buffer.set_pos(1);
         } else {
             output_buffer.set_has_timestamp(false);
             output_buffer.set_token(1, next_token);
-            output_buffer.set_curr_pos(2);
+            output_buffer.set_pos(2);
         }
         m_has_start_of_log_message = false;
         return false;
     }
 
-    LogParser::ParsingAction LogParser::parse_new (InputBuffer& input_buffer, OutputBuffer& output_buffer) {
+    LogParser::ParsingAction LogParser::parse_new (LogInputBuffer& input_buffer, TokenOutputBuffer& output_buffer) {
         if (m_has_start_of_log_message) {
             // switch to timestamped messages if a timestamp is ever found at the start of line (potentially dangerous as it never switches back)
             /// TODO: potentially switch back if a new line is reached and the message is too long (100x static message size)
@@ -147,10 +147,10 @@ namespace compressor_frontend {
             }
             if (output_buffer.has_timestamp()) {
                 output_buffer.set_token(0, m_start_of_log_message);
-                output_buffer.set_curr_pos(1);
+                output_buffer.set_pos(1);
             } else {
                 output_buffer.set_token(1, m_start_of_log_message);
-                output_buffer.set_curr_pos(2);
+                output_buffer.set_pos(2);
             }
             m_has_start_of_log_message = false;
         }
@@ -166,7 +166,7 @@ namespace compressor_frontend {
                 return ParsingAction::CompressAndFinish;
             } else if (output_buffer.has_timestamp() == false && token_type == (int) SymbolID::TokenNewlineId) {
                 input_buffer.set_consumed_pos(output_buffer.get_curr_token().m_end_pos);
-                output_buffer.increment_pos();
+                output_buffer.advance_to_next_token();
                 return ParsingAction::Compress;
             } else if (found_start_of_next_message) {
                 // increment by 1 because the '\n' character is not part of the next log message
@@ -183,14 +183,14 @@ namespace compressor_frontend {
                 output_buffer.set_curr_token(curr_token);
                 input_buffer.set_consumed_pos(m_start_of_log_message.m_start_pos - 1);
                 m_has_start_of_log_message = true;
-                output_buffer.increment_pos();
+                output_buffer.advance_to_next_token();
                 return ParsingAction::Compress;
             }
-            output_buffer.increment_pos();
+            output_buffer.advance_to_next_token();
         }
     }
 
-    Token LogParser::get_next_symbol_new (InputBuffer& input_buffer) {
+    Token LogParser::get_next_symbol_new (LogInputBuffer& input_buffer) {
         return m_lexer.scan_new(input_buffer);
     }
 }

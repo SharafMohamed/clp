@@ -12,8 +12,8 @@
 #include <archive_entry.h>
 
 // Project headers
-#include "../compressor_frontend/InputBuffer.hpp"
-#include "../compressor_frontend/OutputBuffer.hpp"
+#include "../compressor_frontend/LogInputBuffer.hpp"
+#include "../compressor_frontend/TokenOutputBuffer.hpp"
 #include "../Profiler.hpp"
 #include "utils.hpp"
 
@@ -150,8 +150,8 @@ namespace clp {
         try {
             // Create buffers statically
             /// TODO: create this and pass them in like m_log_parser to avoid re-initializing each time
-            static compressor_frontend::InputBuffer input_buffer;
-            static compressor_frontend::OutputBuffer output_buffer;
+            static compressor_frontend::LogInputBuffer input_buffer;
+            static compressor_frontend::TokenOutputBuffer output_buffer;
             input_buffer.reset();
             output_buffer.reset();
             input_buffer.read(reader);
@@ -166,8 +166,9 @@ namespace clp {
                     init_successful = true;
                 } catch (std::runtime_error const& err) {
                     if (string(err.what()) == "Input buffer about to overflow") {
-                        size_t old_storage_size;
-                        bool flipped_static_buffer = input_buffer.increase_size_and_read(reader, old_storage_size);
+                        uint32_t old_storage_size;
+                        bool flipped_static_buffer = input_buffer.increase_capacity_and_read(
+                                reader, old_storage_size);
                         if (flipped_static_buffer) {
                             m_log_parser->flip_lexer_states(old_storage_size);
                         }
@@ -193,8 +194,9 @@ namespace clp {
                     } catch (std::runtime_error const& err) {
                         compressor_frontend::parse_stopwatch.stop();
                         if (string(err.what()) == "Input buffer about to overflow") {
-                            size_t old_storage_size;
-                            bool flipped_static_buffer = input_buffer.increase_size_and_read(reader, old_storage_size);
+                            uint32_t old_storage_size;
+                            bool flipped_static_buffer = input_buffer.increase_capacity_and_read(
+                                    reader, old_storage_size);
                             if(flipped_static_buffer) {
                                 m_log_parser->flip_lexer_states(old_storage_size);
                             }
@@ -207,19 +209,24 @@ namespace clp {
                 compressor_frontend::number_of_log_messages++;
                 switch (parsing_action) {
                     case (LogParser::ParsingAction::Compress) : {
-                        archive_writer.write_msg_using_schema(output_buffer.get_active_buffer(), output_buffer.get_curr_pos(),
-                                                              output_buffer.has_delimiters(), output_buffer.has_timestamp());
+                        archive_writer.write_msg_using_schema(
+                                output_buffer.storage().get_mutable_active_buffer(),
+                                output_buffer.storage().pos(),
+                                output_buffer.has_delimiters(),
+                                output_buffer.has_timestamp());
                         input_buffer.try_read(reader);
                         if(output_buffer.has_timestamp()) {
-                            output_buffer.set_curr_pos(0);
+                            output_buffer.set_pos(0);
                         } else {
-                            output_buffer.set_curr_pos(1);
+                            output_buffer.set_pos(1);
                         }
                         break;
                     }
                     case (LogParser::ParsingAction::CompressAndFinish) : {
-                        archive_writer.write_msg_using_schema(output_buffer.get_active_buffer(), output_buffer.get_curr_pos(),
-                                                              output_buffer.has_delimiters(), output_buffer.has_timestamp());
+                        archive_writer.write_msg_using_schema(
+                                output_buffer.storage().get_mutable_active_buffer(),
+                                output_buffer.storage().pos(), output_buffer.has_delimiters(),
+                                output_buffer.has_timestamp());
                         break;
                     }
                     default : {

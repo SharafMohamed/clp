@@ -9,8 +9,8 @@ set(SOURCE_FILES_make-dictionaries-readable
         ${CMAKE_CURRENT_SOURCE_DIR}/src/compressor_frontend/finite_automata/RegexNFA.tpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/compressor_frontend/finite_automata/UnicodeIntervalTree.hpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/compressor_frontend/finite_automata/UnicodeIntervalTree.tpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/compressor_frontend/InputBuffer.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/compressor_frontend/InputBuffer.hpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/compressor_frontend/LogInputBuffer.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/compressor_frontend/LogInputBuffer.hpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/compressor_frontend/LALR1Parser.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/compressor_frontend/LALR1Parser.hpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/compressor_frontend/LALR1Parser.tpp
@@ -18,8 +18,8 @@ set(SOURCE_FILES_make-dictionaries-readable
         ${CMAKE_CURRENT_SOURCE_DIR}/src/compressor_frontend/Lexer.tpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/compressor_frontend/LogParser.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/ src/compressor_frontend/LogParser.hpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/compressor_frontend/OutputBuffer.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/compressor_frontend/OutputBuffer.hpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/compressor_frontend/TokenOutputBuffer.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/compressor_frontend/TokenOutputBuffer.hpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/compressor_frontend/SchemaParser.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/compressor_frontend/SchemaParser.hpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/compressor_frontend/Token.cpp
