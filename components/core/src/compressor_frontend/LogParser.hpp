@@ -35,7 +35,7 @@ namespace compressor_frontend {
          * Reset the parser. Return true if EOF was reached, false otherwise.
          * @param output_buffer
          */
-        void reset_new (LogOutputBuffer& output_buffer);
+        void reset ();
 
         /**
          * Initialize the parser. Return true if EOF was reached, false otherwise.

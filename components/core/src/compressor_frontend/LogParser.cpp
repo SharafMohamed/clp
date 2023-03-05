@@ -115,23 +115,24 @@ namespace compressor_frontend {
     }
 
 
-    void LogParser::reset_new(LogOutputBuffer& output_buffer) {
+    void LogParser::reset () {
         m_lexer.reset_new();
-        output_buffer.set_has_delimiters(m_lexer.get_has_delimiters());
     }
 
     /// TODO: if the first text is a variable in the no timestamp case you lose the first variable
     /// to static text since it has no leading delim
     bool LogParser::init (LogInputBuffer& input_buffer, LogOutputBuffer& output_buffer) {
+        output_buffer.set_has_delimiters(m_lexer.get_has_delimiters());
         Token next_token = get_next_symbol_new(input_buffer);
         // make sure initialized is set only after getting next_token, as this call can fail if
         // the input_buffer does not fit a single token (extremely unlikely edge-case)
         m_initialized = true;
-        output_buffer.set_token(0, next_token);
         if (next_token.m_type_ids_ptr->at(0) == (int) SymbolID::TokenEndID) {
+            output_buffer.set_token(0, next_token);
             return true;
         }
         if (next_token.m_type_ids_ptr->at(0) == (int) SymbolID::TokenFirstTimestampId) {
+            output_buffer.set_token(0, next_token);
             output_buffer.set_has_timestamp(true);
             output_buffer.set_pos(1);
         } else {

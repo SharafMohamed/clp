@@ -5,7 +5,10 @@
 
 namespace compressor_frontend::library {
 
-    BufferParser::BufferParser (char const* schema_file) :  m_log_parser(schema_file) {
+    BufferParser::BufferParser (char const* schema_file) : m_log_parser(schema_file),
+                                                           m_log_input_buffer() {
+        m_log_parser.reset();
+        m_log_input_buffer.reset();
 
     }
 
@@ -26,12 +29,8 @@ namespace compressor_frontend::library {
                                       bool finished_reading_input) {
         m_log_input_buffer.set_storage(buf, size, read_to, finished_reading_input);
         try {
-            if (false == m_log_parser.initialized()) {
-                bool done = m_log_parser.init(m_log_input_buffer, log_view.m_log_output_buffer);
-                if (false == done) {
-                    m_log_parser.parse_new(m_log_input_buffer, log_view.m_log_output_buffer);
-                }
-            } else {
+            bool done = m_log_parser.init(m_log_input_buffer, log_view.m_log_output_buffer);
+            if (false == done) {
                 m_log_parser.parse_new(m_log_input_buffer, log_view.m_log_output_buffer);
             }
         } catch (std::runtime_error const& err) {
@@ -62,6 +61,29 @@ namespace compressor_frontend::library {
             return error_code;
         }
         return 0;
+    }
+
+    ReaderParser::ReaderParser (char const* schema_file, Reader& reader) :
+                                                                       m_log_parser(schema_file),
+                                                                       m_log_input_buffer(),
+                                                                       m_reader(reader), m_pos (0),
+                                                                       m_finished_reading(false) {
+
+    }
+
+    std::optional<ReaderParser> ReaderParser::ReaderParserFromFile (char const* schema_file,
+                                                                    Reader& reader) {
+        ReaderParser reader_parser(schema_file, reader);
+        return reader_parser;
+
+    }
+
+    int ReaderParser::getNextLogView (LogView& log_view) {
+
+    }
+
+    int ReaderParser::getNLogViews (std::vector<LogView>& log_views, size_t count) {
+
     }
 
     LogView::LogView (uint32_t num_vars, LogParser* log_parser_ptr) :

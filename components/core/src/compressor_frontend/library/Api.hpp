@@ -1,9 +1,10 @@
+#ifndef COMPRESSOR_FRONTEND_LIBRARY_API_HPP
+#define COMPRESSOR_FRONTEND_LIBRARY_API_HPP
+
 #include <cstddef>
 #include <cstdio>
-#include <functional>
 #include <map>
 #include <optional>
-//#include <span>
 #include <string_view>
 #include <vector>
 
@@ -11,6 +12,7 @@
 #include "../LogInputBuffer.hpp"
 #include "../LogOutputBuffer.hpp"
 #include "../LogParser.hpp"
+#include "Reader.hpp"
 
 namespace compressor_frontend::library {
 
@@ -60,7 +62,7 @@ namespace compressor_frontend::library {
          * @param buf The byte buffer containing raw logs to be parsed.
          * @param size The size of buf.
          * @param read_to Populated with the number of bytes read from buf.
-         * @param log_view Populated with N log views parsed from buf. Only valid if
+         * @param log_views Populated with N log views parsed from buf. Only valid if
          * 0 is returned from function.
          * @param count The number of logs to attempt to parse; defaults to 0,
          * which reads as many logs as possible
@@ -70,74 +72,64 @@ namespace compressor_frontend::library {
          * @return ERROR_CODE if no log parsed.
          */
         int getNLogViews (char* buf, size_t size, size_t& read_to,
-                          std::vector<LogView>& log_view, size_t count,
+                          std::vector<LogView>& log_views, size_t count,
                           bool finished_reading_input = false);
-
-        // if c++20 can replace 'std::byte* buf, size_t size' with 'std::span<std::byte> buf'
-        //std::optional<LogView> getNextLogView(std::span<std::byte> buf, size_t &read_to);
-        //std::vector<LogView> getNLogViews(std::span<std::byte> buf, size_t &readto, size_t count = 0,
-        //                                  bool finished_reading_input = false);
 
     private:
         LogParser m_log_parser;
         LogInputBuffer m_log_input_buffer;
     };
 
-//    /**
-//     * Miniaml interface necessary for the parser to invoke reading as necessary.
-//     * Allowing the parser to invoke read helps users avoid unnecessary copying,
-//     * makes the lifetime of LogViews easier to understand, and makes the user code
-//     * cleaner.
-//     */
-//    class Reader {
-//    public:
-//        /**
-//         * Function to read from some unknown source into specified destination buffer
-//         * @param std::byte* Destination byte buffer to read into
-//         * @param size_t Amount to read up to
-//         * @return The amount read
-//         */
-//        std::function<size_t (std::byte*, size_t)> read;
-//        /**
-//         * @return True if the source has been exhausted (e.g. EOF reached)
-//         */
-//        std::function<bool ()> done;
-//    };
-//
-//    /**
-//     * Class providing the parser with the source to read from allowing the parser
-//     * to perform any reading as necessary.
-//     */
-//    class ReaderParser {
-//    public:
-//        /**
-//         * Construct statically to more cleanly report errors building the parser
-//         * from the given schema. Can construct from from a file, or a Schema
-//         * object.
-//         */
+    /**
+     * Class providing the parser with the source to read from allowing the parser
+     * to perform any reading as necessary.
+     */
+    class ReaderParser {
+    public:
+        ReaderParser (char const* schema_file, Reader& reader);
+
+
+        /**
+         * Construct statically to more cleanly report errors building the parser
+         * from the given schema. Can construct from from a file, or a Schema
+         * object.
+         */
 //        static std::optional<ReaderParser> ReaderParserFromHeuristic (Reader& r);
-//
-//        static std::optional<ReaderParser>
-//        ReaderParserFromFile (char const* schema_file, Reader& r);
+
+        static std::optional<ReaderParser>
+        ReaderParserFromFile (char const* schema_file, Reader& reader);
 //
 //        static std::optional<ReaderParser> ReaderParserFromSchema (Schema schema, Reader& r);
-//
-//        /**
-//         * Attempts to parse the next log from the source it was created with.
-//         * @return Next log in buf parsed as a LogView
-//         * @return Empty optional if no log parsed
-//         */
-//        std::optional<LogView> getNextLogView ();
-//
-//        /**
-//         * Attempts to parse the next N logs from the source it was created with.
-//         * @param count The number of logs to attempt to parse; defaults to 0,
-//         * which reads as many logs as possible
-//         * @return Vector of parsed logs as LogViews
-//         * @return Empty vector if no logs parsed
-//         */
-//        std::vector<LogView> getNLogViews (size_t count = 0);
-//    };
+
+        /**
+         * Attempts to parse the next log from the source it was created with.
+         * @param log_view Populated with the log view parsed from buf. Only valid if
+         * 0 is returned from function.
+         * @return 0 if next log in buf parsed as a LogView.
+         * @return ERROR_CODE if no log parsed.
+         */
+        int getNextLogView (LogView& log_view);
+
+        /**
+         * Attempts to parse the next N logs from the source it was created with.
+         * @param log_views Populated with N log views parsed from buf. Only valid if
+         * 0 is returned from function.
+         * @param count The number of logs to attempt to parse; defaults to 0,
+         * which reads as many logs as possible
+         * @return 0 if next log in buf parsed as a LogView.
+         * @return ERROR_CODE if no log parsed.
+         */
+        int getNLogViews (std::vector<LogView>& log_view, size_t count = 0);
+
+    private:
+        Reader m_reader;
+        LogParser m_log_parser;
+        LogInputBuffer m_log_input_buffer;
+        char* m_buffer;
+        uint32_t m_pos;
+        size_t m_amount_read;
+        bool m_finished_reading;
+    };
 //
 //    /**
 //     * Class providing the parser with the source to read from allowing the parser
@@ -311,7 +303,7 @@ namespace compressor_frontend::library {
         private:
             char* m_buffer;
             uint32_t m_buffer_size;
-        };
+    };
 //
 //    /**
 //     * Schema class Copied from existing code.
@@ -362,3 +354,6 @@ namespace compressor_frontend::library {
 //        std::map<std::string, std::string> m_variables;
 //    };
 }
+
+#endif //COMPRESSOR_FRONTEND_LIBRARY_API_HPP
+

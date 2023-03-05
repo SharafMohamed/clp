@@ -157,7 +157,7 @@ namespace clp {
             input_buffer.read(reader);
 
             // Initialize parser and lexer
-            m_log_parser->reset_new(output_buffer);
+            m_log_parser->reset();
             bool init_successful = false;
             bool done;
             while (init_successful == false) {

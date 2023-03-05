@@ -102,4 +102,22 @@ namespace compressor_frontend {
             m_pos_last_read_char -= m_storage.size();
         }
     }
+
+    void LogInputBuffer::read (library::Reader& reader) {
+        size_t bytes_read;
+        // read into the correct half of the buffer
+        uint32_t read_offset = 0;
+        if (m_last_read_first_half) {
+            read_offset = m_storage.size() / 2;
+        }
+        m_storage.read(reader, read_offset, m_storage.size() / 2, bytes_read);
+        m_last_read_first_half = !m_last_read_first_half;
+        if (bytes_read < m_storage.size() / 2) {
+            finished_reading_input = true;
+        }
+        m_pos_last_read_char += bytes_read;
+        if (m_pos_last_read_char > m_storage.size()) {
+            m_pos_last_read_char -= m_storage.size();
+        }
+    }
 }

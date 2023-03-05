@@ -3,6 +3,7 @@
 
 // Project Headers
 #include "../ReaderInterface.hpp"
+#include "library/Reader.hpp"
 #include "Buffer.hpp"
 
 namespace compressor_frontend {
@@ -29,11 +30,18 @@ namespace compressor_frontend {
          */
         bool read_is_safe ();
 
+        /// TODO: make a library::Reader out of ReaderInterface and remove first type of read
         /**
          * Reads into the half of the buffer currently available
          * @param reader
          */
         void read (ReaderInterface& reader);
+
+        /**
+         * Reads into the half of the buffer currently available
+         * @param reader
+         */
+        void read (library::Reader& reader);
 
         /**
          * Reads if only consumed data will be overwritten
