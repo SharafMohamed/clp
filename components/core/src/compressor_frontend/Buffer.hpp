@@ -119,7 +119,6 @@ namespace compressor_frontend {
             std::copy(storage_to_copy_first, storage_to_copy_last, m_active_storage + offset);
         }
 
-        /// TODO: make a library::Reader out of ReaderInterface and remove first type of read
         void read (ReaderInterface& reader, uint32_t read_offset, uint32_t bytes_to_read,
                    size_t& bytes_read) {
             reader.read(m_active_storage + read_offset, bytes_to_read, bytes_read);

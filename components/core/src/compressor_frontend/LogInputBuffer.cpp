@@ -72,6 +72,38 @@ namespace compressor_frontend {
         return flipped_static_buffer;
     }
 
+    bool LogInputBuffer::increase_capacity_and_read (library::Reader& reader,
+                                                     uint32_t& old_storage_size) {
+        old_storage_size = m_storage.size();
+        uint32_t new_storage_size = old_storage_size * 2;
+        bool flipped_static_buffer = false;
+        // Handle super long line for completeness, efficiency doesn't matter
+        if (m_storage.size() == m_storage.static_size()) {
+            SPDLOG_WARN("Long line detected changing to dynamic input buffer and"
+                        " increasing size to {}.", new_storage_size);
+        } else {
+            SPDLOG_WARN("Long line detected increasing dynamic input buffer size to {}.",
+                        new_storage_size);
+        }
+        const char* old_storage = m_storage.get_active_buffer();
+        m_storage.double_size();
+        if (m_last_read_first_half == false) {
+            // Buffer in correct order
+            m_storage.copy(old_storage, old_storage + old_storage_size, 0);
+        } else {
+            uint32_t half_old_storage_size = old_storage_size / 2;
+            // Buffer out of order, so it needs to be flipped when copying
+            m_storage.copy(old_storage + half_old_storage_size, old_storage + old_storage_size, 0);
+            m_storage.copy(old_storage, old_storage + half_old_storage_size,
+                           half_old_storage_size);
+            flipped_static_buffer = true;
+        }
+        m_pos_last_read_char = new_storage_size - old_storage_size;
+        m_storage.set_pos(old_storage_size);
+        read(reader);
+        return flipped_static_buffer;
+    }
+
     char LogInputBuffer::get_next_character () {
         if (finished_reading_input && m_storage.pos() == m_pos_last_read_char) {
             m_log_fully_consumed = true;

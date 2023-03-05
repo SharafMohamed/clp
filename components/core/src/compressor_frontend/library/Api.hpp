@@ -62,8 +62,8 @@ namespace compressor_frontend::library {
          * @param buf The byte buffer containing raw logs to be parsed.
          * @param size The size of buf.
          * @param read_to Populated with the number of bytes read from buf.
-         * @param log_views Populated with N log views parsed from buf. Only valid if
-         * 0 is returned from function.
+         * @param log_views Populated with up to N log views parsed from buf.
+         * Only valid if 0 is returned from function.
          * @param count The number of logs to attempt to parse; defaults to 0,
          * which reads as many logs as possible
          * @param finished_reading_input Treat the end of the buffer as the end of input to parse
@@ -112,14 +112,14 @@ namespace compressor_frontend::library {
 
         /**
          * Attempts to parse the next N logs from the source it was created with.
-         * @param log_views Populated with N log views parsed from buf. Only valid if
-         * 0 is returned from function.
+         * @param log_views Populated with up to N log views parsed from buf.
+         * Only valid if 0 is returned from function.
          * @param count The number of logs to attempt to parse; defaults to 0,
          * which reads as many logs as possible
          * @return 0 if next log in buf parsed as a LogView.
          * @return ERROR_CODE if no log parsed.
          */
-        int getNLogViews (std::vector<LogView>& log_view, size_t count = 0);
+        int getNLogViews (std::vector<LogView>& log_views, size_t count = 0);
 
     private:
         Reader m_reader;

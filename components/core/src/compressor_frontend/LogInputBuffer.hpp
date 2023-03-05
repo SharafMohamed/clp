@@ -30,17 +30,12 @@ namespace compressor_frontend {
          */
         bool read_is_safe ();
 
-        /// TODO: make a library::Reader out of ReaderInterface and remove first type of read
+        // TODO: make a library::Reader out of ReaderInterface and remove first type of read
         /**
          * Reads into the half of the buffer currently available
          * @param reader
          */
         void read (ReaderInterface& reader);
-
-        /**
-         * Reads into the half of the buffer currently available
-         * @param reader
-         */
         void read (library::Reader& reader);
 
         /**
@@ -53,6 +48,8 @@ namespace compressor_frontend {
             }
         }
 
+        // TODO: make a library::Reader out of ReaderInterface and remove first type of
+        // increase_capacity_and_read
         /**
          * Creates a new dynamic buffer with doubles the capacity. The first
          * half of the new buffer contains the old content in the same order
@@ -66,6 +63,7 @@ namespace compressor_frontend {
          * @return if old buffer was flipped when creating new buffer
          */
         bool increase_capacity_and_read (ReaderInterface& reader, uint32_t& old_storage_size);
+        bool increase_capacity_and_read (library::Reader& reader, uint32_t& old_storage_size);
 
         /**
          * @return EOF if at end of file, or the next char in the file
