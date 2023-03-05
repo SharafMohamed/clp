@@ -1,11 +1,12 @@
 #include "Api.hpp"
 
 // Project Headers
+#include "../../FileReader.hpp"
 #include "../LogInputBuffer.hpp"
 
 namespace compressor_frontend::library {
 
-    BufferParser::BufferParser (char const* schema_file) : m_log_parser(schema_file),
+    BufferParser::BufferParser (const char* schema_file) : m_log_parser(schema_file),
                                                            m_log_input_buffer() {
         m_log_parser.reset();
         m_log_input_buffer.reset();
@@ -16,7 +17,7 @@ namespace compressor_frontend::library {
         // DO LATER
     //}
 
-    std::optional<BufferParser> BufferParser::BufferParserFromFile (char const* schema_file) {
+    std::optional<BufferParser> BufferParser::BufferParserFromFile (const char* schema_file) {
         BufferParser buffer_parser(schema_file);
         return buffer_parser;
     }
@@ -64,7 +65,7 @@ namespace compressor_frontend::library {
         return 0;
     }
 
-    ReaderParser::ReaderParser (char const* schema_file, Reader& reader) :
+    ReaderParser::ReaderParser (const char* schema_file, Reader& reader) :
                                                                        m_log_parser(schema_file),
                                                                        m_log_input_buffer(),
                                                                        m_reader(reader), m_pos (0),
@@ -74,7 +75,7 @@ namespace compressor_frontend::library {
         m_log_input_buffer.read(m_reader);
     }
 
-    std::optional<ReaderParser> ReaderParser::ReaderParserFromFile (char const* schema_file,
+    std::optional<ReaderParser> ReaderParser::ReaderParserFromFile (const char* schema_file,
                                                                     Reader& reader) {
         ReaderParser reader_parser(schema_file, reader);
         return reader_parser;
@@ -155,6 +156,28 @@ namespace compressor_frontend::library {
             return error_code;
         }
         return 0;
+    }
+
+    FileParser::FileParser (const char* schema_file, Reader& reader) :
+            m_reader_parser(schema_file, reader) {
+
+    }
+
+    static std::optional<FileParser>
+    FileParserFromFile (const char* schema_file, std::string& log_file_name) {
+        std::shared_ptr<FileReader> file_reader_ptr = std::make_shared<FileReader>();
+        file_reader_ptr->open(log_file_name);
+        FileReaderWrapper file_reader_wrapper(file_reader_ptr);
+        FileParser file_parser(schema_file, file_reader_wrapper);
+        return file_parser;
+    }
+
+    int FileParser::getNextLogView (LogView& log_view) {
+        return m_reader_parser.getNextLogView(log_view);
+    }
+
+    int FileParser::getNLogViews (std::vector<LogView>& log_views, size_t count) {
+        return m_reader_parser.getNLogViews(log_views, count);
     }
 
     LogView::LogView (uint32_t num_vars, LogParser* log_parser_ptr) :

@@ -16,13 +16,15 @@ namespace compressor_frontend::library {
          * Function to read from some unknown source into specified destination buffer
          * @param std::char* Destination byte buffer to read into
          * @param size_t Amount to read up to
-         * @return The amount read
+         * @param size_t& The amount read
+         * @return false on EOF
+         * @return true on success
          */
-        std::function<size_t (char*, size_t, size_t&)> read;
+        std::function<bool (char*, size_t, size_t&)> read;
         /**
          * @return True if the source has been exhausted (e.g. EOF reached)
          */
-        std::function<bool ()> done;
+        //std::function<bool ()> done;
     };
 
 

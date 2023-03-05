@@ -26,16 +26,14 @@ namespace compressor_frontend::library {
      */
     class BufferParser {
     public:
-        BufferParser (char const* schema_file);
+        BufferParser (const char* schema_file);
 
         /**
          * Construct statically to more cleanly report errors building the parser
          * from the given schema. Can construct from from a file, or a Schema
          * object.
          */
-//        static std::optional<BufferParser> BufferParserFromHeuristic ();
-
-        static std::optional<BufferParser> BufferParserFromFile (char const* schema_file);
+        static std::optional<BufferParser> BufferParserFromFile (const char* schema_file);
 
 //        static std::optional<BufferParser> BufferParserFromSchema (Schema schema);
 
@@ -86,7 +84,7 @@ namespace compressor_frontend::library {
      */
     class ReaderParser {
     public:
-        ReaderParser (char const* schema_file, Reader& reader);
+        ReaderParser (const char* schema_file, Reader& reader);
 
 
         /**
@@ -94,10 +92,8 @@ namespace compressor_frontend::library {
          * from the given schema. Can construct from from a file, or a Schema
          * object.
          */
-//        static std::optional<ReaderParser> ReaderParserFromHeuristic (Reader& r);
-
         static std::optional<ReaderParser>
-        ReaderParserFromFile (char const* schema_file, Reader& reader);
+        ReaderParserFromFile (const char* schema_file, Reader& reader);
 //
 //        static std::optional<ReaderParser> ReaderParserFromSchema (Schema schema, Reader& r);
 
@@ -130,42 +126,61 @@ namespace compressor_frontend::library {
         size_t m_amount_read;
         bool m_finished_reading;
     };
-//
-//    /**
-//     * Class providing the parser with the source to read from allowing the parser
-//     * to perform any reading as necessary.
-//     */
-//    class FileParser {
-//    public:
-//        /**
-//         * Construct statically to more cleanly report errors building the parser
-//         * from the given schema. Can construct from from a file, or a Schema
-//         * object.
-//         */
-//        static std::optional<FileParser> FileParserFromHeuristic (char const* log_file);
-//
+
+    class FileReaderWrapper : public Reader {
+    public:
+        FileReaderWrapper(std::shared_ptr<FileReader> reader) : m_reader(reader) {}
+
+        virtual bool read(char* buffer, size_t maxLength, size_t& read_to) {
+            return m_reader->read(buffer, maxLength, read_to);
+        }
+
+    private:
+        std::shared_ptr<FileReader> m_reader;
+    };
+
+    /**
+     * Class providing the parser with the source to read from allowing the parser
+     * to perform any reading as necessary.
+     */
+    class FileParser {
+    public:
+        FileParser (const char* schema_file, Reader& reader);
+
+        /**
+         * Construct statically to more cleanly report errors building the parser
+         * from the given schema. Can construct from from a file, or a Schema
+         * object.
+         */
+        static std::optional<FileParser>
+        FileParserFromFile (const char* schema_file, std::string& log_file_name);
+
 //        static std::optional<FileParser>
-//        FileParserFromFile (char const* log_file, char const* schema_file);
+//        FileParserFromSchema (Schema schema, std::string& log_file_name);
 //
-//        static std::optional<FileParser>
-//        FileParserFromSchema (char const* log_file, Schema schema);
-//
-//        /**
-//         * Attempts to parse the next log from the source it was created with.
-//         * @return Next log in buf parsed as a LogView
-//         * @return Empty optional if no log parsed
-//         */
-//        std::optional<LogView> getNextLogView ();
-//
-//        /**
-//         * Attempts to parse the next N logs from the source it was created with.
-//         * @param count The number of logs to attempt to parse; defaults to 0,
-//         * which reads as many logs as possible
-//         * @return Vector of parsed logs as LogViews
-//         * @return Empty vector if no logs parsed
-//         */
-//        std::vector<LogView> getNLogViews (size_t count = 0);
-//    };
+        /**
+         * Attempts to parse the next log from the source it was created with.
+         * @param log_view Populated with the log view parsed from buf. Only valid if
+         * 0 is returned from function.
+         * @return 0 if next log in buf parsed as a LogView.
+         * @return ERROR_CODE if no log parsed.
+         */
+        int getNextLogView (LogView& log_view);
+
+        /**
+         * Attempts to parse the next N logs from the source it was created with.
+         * @param log_views Populated with up to N log views parsed from buf.
+         * Only valid if 0 is returned from function.
+         * @param count The number of logs to attempt to parse; defaults to 0,
+         * which reads as many logs as possible
+         * @return 0 if next log in buf parsed as a LogView.
+         * @return ERROR_CODE if no log parsed.
+         */
+        int getNLogViews (std::vector<LogView>& log_views, size_t count = 0);
+    private:
+        ReaderParser m_reader_parser;
+
+    };
 
     /**
      * An object that represents a parsed log.
