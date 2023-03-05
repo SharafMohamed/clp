@@ -6,25 +6,22 @@
 
 namespace compressor_frontend::library {
 
-    BufferParser::BufferParser (const char* schema_file) : m_log_parser(schema_file),
-                                                           m_log_input_buffer() {
+    BufferParser::BufferParser (Schema& schema) : m_log_parser(schema.get_schema_ast_ptr()), m_log_input_buffer() {
         m_log_parser.reset();
         m_log_input_buffer.reset();
-
     }
 
-    //std::optional<BufferParser> BufferParser::BufferParserFromHeuristic () {
-        // DO LATER
-    //}
-
     std::optional<BufferParser> BufferParser::BufferParserFromFile (const char* schema_file) {
-        BufferParser buffer_parser(schema_file);
+        Schema schema(schema_file);
+        BufferParser buffer_parser(schema);
         return buffer_parser;
     }
 
-    //std::optional<BufferParser> BufferParser::BufferParserFromSchema (Schema schema) {
-        // DO LATER
-    //}
+    std::optional<BufferParser> BufferParser::BufferParserFromSchema (Schema& schema) {
+        BufferParser buffer_parser(schema);
+        return buffer_parser;
+    }
+
 
     int BufferParser::getNextLogView (char* buf, size_t size, size_t& read_to, LogView& log_view,
                                       bool finished_reading_input) {
@@ -65,11 +62,9 @@ namespace compressor_frontend::library {
         return 0;
     }
 
-    ReaderParser::ReaderParser (const char* schema_file, Reader& reader) :
-                                                                       m_log_parser(schema_file),
-                                                                       m_log_input_buffer(),
-                                                                       m_reader(reader), m_pos (0),
-                                                                       m_finished_reading(false) {
+    ReaderParser::ReaderParser (Schema& schema, Reader& reader) :
+            m_log_parser(schema.get_schema_ast_ptr()), m_log_input_buffer(), m_reader(reader),
+            m_pos (0), m_finished_reading(false) {
         m_log_parser.reset();
         m_log_input_buffer.reset();
         m_log_input_buffer.read(m_reader);
@@ -77,9 +72,16 @@ namespace compressor_frontend::library {
 
     std::optional<ReaderParser> ReaderParser::ReaderParserFromFile (const char* schema_file,
                                                                     Reader& reader) {
-        ReaderParser reader_parser(schema_file, reader);
+        Schema schema(schema_file);
+        ReaderParser reader_parser(schema, reader);
         return reader_parser;
 
+    }
+
+    std::optional<ReaderParser> ReaderParser::ReaderParserFromSchema (Schema& schema,
+                                                                      Reader& reader) {
+        ReaderParser reader_parser(schema, reader);
+        return reader_parser;
     }
 
     int ReaderParser::getNextLogView (LogView& log_view) {
@@ -158,17 +160,23 @@ namespace compressor_frontend::library {
         return 0;
     }
 
-    FileParser::FileParser (const char* schema_file, Reader& reader) :
-            m_reader_parser(schema_file, reader) {
+    FileParser::FileParser (Schema& schema, Reader& reader) : m_reader_parser(schema, reader) { }
 
-    }
-
-    static std::optional<FileParser>
-    FileParserFromFile (const char* schema_file, std::string& log_file_name) {
+    std::optional<FileParser> FileParserFromFile (const char* schema_file,
+                                                  std::string& log_file_name) {
+        Schema schema(schema_file);
         std::shared_ptr<FileReader> file_reader_ptr = std::make_shared<FileReader>();
         file_reader_ptr->open(log_file_name);
         FileReaderWrapper file_reader_wrapper(file_reader_ptr);
-        FileParser file_parser(schema_file, file_reader_wrapper);
+        FileParser file_parser(schema, file_reader_wrapper);
+        return file_parser;
+    }
+
+    std::optional<FileParser> FileParserFromSchema (Schema& schema, std::string& log_file_name) {
+        std::shared_ptr<FileReader> file_reader_ptr = std::make_shared<FileReader>();
+        file_reader_ptr->open(log_file_name);
+        FileReaderWrapper file_reader_wrapper(file_reader_ptr);
+        FileParser file_parser(schema, file_reader_wrapper);
         return file_parser;
     }
 
@@ -226,4 +234,13 @@ namespace compressor_frontend::library {
             add_token(token_types_ptr[0], token_ptr);
         }
     }
+
+    Schema::Schema (const std::string& schema_file_path) {
+        load_from_file(schema_file_path);
+    }
+
+    void Schema::load_from_file (const std::string& schema_file_path) {
+        m_schema_ast = compressor_frontend::SchemaParser::try_schema_file(schema_file_path);
+    }
+
 }

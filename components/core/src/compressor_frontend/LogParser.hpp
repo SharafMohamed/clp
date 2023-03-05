@@ -30,6 +30,7 @@ namespace compressor_frontend {
 
         // Constructor
         explicit LogParser (const std::string& schema_file_path);
+        explicit LogParser (const compressor_frontend::SchemaFileAST* schema_file_ast_ptr);
 
         /**
          * Reset the parser. Return true if EOF was reached, false otherwise.
@@ -85,7 +86,7 @@ namespace compressor_frontend {
          * Variables other than timestamps cannot have delimiters
          * @param schema_ast
          */
-        void add_rules (const std::unique_ptr<SchemaFileAST>& schema_ast);
+        void add_rules (const SchemaFileAST* schema_ast);
 
         bool m_has_start_of_log_message;
         Token m_start_of_log_message;

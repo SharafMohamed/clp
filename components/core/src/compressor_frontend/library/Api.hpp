@@ -18,7 +18,7 @@ namespace compressor_frontend::library {
 
     class Log;
     class LogView;
-//    class Schema;
+    class Schema;
 
     /**
      * Class allowing user to perform all reading and provide the parser with a
@@ -26,7 +26,7 @@ namespace compressor_frontend::library {
      */
     class BufferParser {
     public:
-        BufferParser (const char* schema_file);
+        BufferParser (Schema& schema);
 
         /**
          * Construct statically to more cleanly report errors building the parser
@@ -35,7 +35,7 @@ namespace compressor_frontend::library {
          */
         static std::optional<BufferParser> BufferParserFromFile (const char* schema_file);
 
-//        static std::optional<BufferParser> BufferParserFromSchema (Schema schema);
+        static std::optional<BufferParser> BufferParserFromSchema (Schema& schema);
 
         /**
          * Attempts to parse the next log inside buf, up to size. The bytes between
@@ -84,7 +84,7 @@ namespace compressor_frontend::library {
      */
     class ReaderParser {
     public:
-        ReaderParser (const char* schema_file, Reader& reader);
+        ReaderParser (Schema& schema, Reader& reader);
 
 
         /**
@@ -94,8 +94,8 @@ namespace compressor_frontend::library {
          */
         static std::optional<ReaderParser>
         ReaderParserFromFile (const char* schema_file, Reader& reader);
-//
-//        static std::optional<ReaderParser> ReaderParserFromSchema (Schema schema, Reader& r);
+
+        static std::optional<ReaderParser> ReaderParserFromSchema (Schema& schema, Reader& r);
 
         /**
          * Attempts to parse the next log from the source it was created with.
@@ -145,7 +145,7 @@ namespace compressor_frontend::library {
      */
     class FileParser {
     public:
-        FileParser (const char* schema_file, Reader& reader);
+        FileParser (Schema& schema, Reader& reader);
 
         /**
          * Construct statically to more cleanly report errors building the parser
@@ -155,9 +155,9 @@ namespace compressor_frontend::library {
         static std::optional<FileParser>
         FileParserFromFile (const char* schema_file, std::string& log_file_name);
 
-//        static std::optional<FileParser>
-//        FileParserFromSchema (Schema schema, std::string& log_file_name);
-//
+        static std::optional<FileParser>
+        FileParserFromSchema (Schema& schema, std::string& log_file_name);
+
         /**
          * Attempts to parse the next log from the source it was created with.
          * @param log_view Populated with the log view parsed from buf. Only valid if
@@ -319,22 +319,22 @@ namespace compressor_frontend::library {
             char* m_buffer;
             uint32_t m_buffer_size;
     };
-//
-//    /**
-//     * Schema class Copied from existing code.
-//     * Contains various functions to manipulate a schema programmatically.
-//     * The majority of use cases should not require users to modify the schema
-//     * programmatically, allowing them to simply edit their schema file.
-//     */
-//    class Schema {
-//    public:
-//        Schema () {}
-//
-//        Schema (std::FILE* schema_file);
-//
+
+    /**
+     * Schema class Copied from existing code.
+     * Contains various functions to manipulate a schema programmatically.
+     * The majority of use cases should not require users to modify the schema
+     * programmatically, allowing them to simply edit their schema file.
+     */
+    class Schema {
+    public:
+        Schema () {}
+
+        Schema (const std::string& schema_file_path);
+
 //        Schema (std::string schema_string);
-//
-//        void load_from_file (std::FILE* schema_file);
+
+        void load_from_file (const std::string& schema_file_path);
 //
 //        void load_from_string (std::string schema_string);
 //
@@ -364,10 +364,13 @@ namespace compressor_frontend::library {
 //
 //        void clear ();
 //
-//    private:
-//        std::vector<char> m_delimiters;
-//        std::map<std::string, std::string> m_variables;
-//    };
+
+        [[nodiscard]] const compressor_frontend::SchemaFileAST* get_schema_ast_ptr () const {
+            return m_schema_ast.get();
+        }
+    private:
+        std::unique_ptr<compressor_frontend::SchemaFileAST> m_schema_ast;
+    };
 }
 
 #endif //COMPRESSOR_FRONTEND_LIBRARY_API_HPP

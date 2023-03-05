@@ -29,7 +29,14 @@ namespace compressor_frontend {
         std::unique_ptr<compressor_frontend::SchemaFileAST> schema_ast =
                 compressor_frontend::SchemaParser::try_schema_file(schema_file_path);
         add_delimiters(schema_ast->m_delimiters);
-        add_rules(schema_ast);
+        add_rules(schema_ast.get());
+        m_lexer.generate();
+    }
+
+    LogParser::LogParser (const compressor_frontend::SchemaFileAST* schema_file_ast_ptr) :
+            m_initialized (false) {
+        add_delimiters(schema_file_ast_ptr->m_delimiters);
+        add_rules(schema_file_ast_ptr);
         m_lexer.generate();
     }
 
@@ -40,7 +47,7 @@ namespace compressor_frontend {
         }
     }
 
-    void LogParser::add_rules (const unique_ptr<SchemaFileAST>& schema_ast) {
+    void LogParser::add_rules (const SchemaFileAST* schema_ast) {
         // Currently, required to have delimiters (if schema_ast->delimiters != nullptr it is already enforced that at least 1 delimiter is specified)
         if (schema_ast->m_delimiters == nullptr) {
             throw runtime_error("When using --schema-path, \"delimiters:\" line must be used.");
