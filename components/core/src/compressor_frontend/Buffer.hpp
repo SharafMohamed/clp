@@ -45,6 +45,10 @@ namespace compressor_frontend {
             m_active_storage[pos] = value;
         }
 
+        [[nodiscard]] const Item& get_value (uint32_t pos) const {
+            return m_active_storage[pos];
+        }
+
         void set_curr_value (Item& value) {
             m_active_storage[m_pos] = value;
         }

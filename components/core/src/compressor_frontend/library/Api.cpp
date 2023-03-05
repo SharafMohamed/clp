@@ -5,13 +5,8 @@
 
 namespace compressor_frontend::library {
 
-    uint32_t LogView::m_verbosity_id;
-    std::map<std::string, uint32_t> LogView::m_var_ids;
-
-
     BufferParser::BufferParser (char const* schema_file) :  m_log_parser(schema_file) {
-        LogView::set_var_ids(m_log_parser.m_lexer.m_symbol_id);
-        LogView::set_verbosity_id(m_log_parser.m_lexer.m_symbol_id["verbosity"]);
+
     }
 
     //std::optional<BufferParser> BufferParser::BufferParserFromHeuristic () {
@@ -56,7 +51,7 @@ namespace compressor_frontend::library {
                                     bool finished_reading_input) {
         int error_code;
         while (count == 0 || count > log_views.size() ) {
-            LogView log_view(m_log_parser.m_lexer.m_id_symbol.size());
+            LogView log_view(m_log_parser.m_lexer.m_id_symbol.size(), &m_log_parser);
             error_code = getNextLogView(buf, size, read_to, log_view, finished_reading_input);
             if (0 != error_code) {
                 break;
@@ -69,9 +64,50 @@ namespace compressor_frontend::library {
         return 0;
     }
 
-    LogView::LogView (uint32_t num_vars) : m_log_var_occurrences(num_vars) { }
+    LogView::LogView (uint32_t num_vars, LogParser* log_parser_ptr) :
+                                                                  m_log_var_occurrences(num_vars) {
+        m_log_parser_ptr = log_parser_ptr;
+        m_verbosity_id = m_log_parser_ptr->m_lexer.m_symbol_id["verbosity"];
+    }
 
     Log LogView::deepCopy () {
-        return Log(this, this->m_log_var_occurrences.size());
+        return Log(this, this->m_log_var_occurrences.size(), this->m_log_parser_ptr);
+    }
+
+    Log::Log (LogView* src_ptr, uint32_t num_vars,  LogParser* log_parser_ptr) :
+                                                                LogView(num_vars, log_parser_ptr) {
+        m_log_output_buffer = src_ptr->m_log_output_buffer;
+        setMultiline(src_ptr->isMultiLine());
+        uint32_t start = 0;
+        if (false == src_ptr->m_log_output_buffer.has_timestamp()) {
+            start = 1;
+        }
+        m_buffer_size = 0;
+        for (uint32_t i = start; i < src_ptr->m_log_output_buffer.storage().size(); i++) {
+            const Token& token = src_ptr->m_log_output_buffer.get_token(i);
+            m_buffer_size += token.get_length();
+        }
+        m_buffer = (char*) malloc(m_buffer_size * sizeof(char));
+        if (m_buffer == nullptr) {
+           throw(std::runtime_error("failed to create log buffer during deep copy"));
+        }
+        uint32_t curr_pos = 0;
+        for (uint32_t i = start; i < src_ptr->m_log_output_buffer.storage().size(); i++) {
+            const Token& token = src_ptr->m_log_output_buffer.get_token(i);
+            uint32_t start_pos = curr_pos;
+            for (uint32_t j = token.m_start_pos; j < token.m_end_pos; j++) {
+                m_buffer[curr_pos++] = token.m_buffer[j];
+                Token copied_token = {start_pos, curr_pos, m_buffer, m_buffer_size, 0, token.m_type_ids_ptr};
+                m_log_output_buffer.set_curr_token(copied_token);
+                uint32_t token_type = copied_token.m_type_ids_ptr->at(0);
+                m_log_output_buffer.advance_to_next_token();
+            }
+        }
+        for(uint32_t i = 0; i < m_log_output_buffer.storage().size(); i++) {
+            const Token* token_ptr =
+                    &m_log_output_buffer.storage().get_active_buffer()[i];
+            const std::vector<int> token_types_ptr = *token_ptr->m_type_ids_ptr;
+            add_token(token_types_ptr[0], token_ptr);
+        }
     }
 }

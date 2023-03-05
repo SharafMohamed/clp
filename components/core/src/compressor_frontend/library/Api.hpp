@@ -187,7 +187,7 @@ namespace compressor_frontend::library {
     class LogView {
     public:
         // Likely to only be used by the parser itself.
-        LogView (uint32_t num_vars);
+        LogView (uint32_t num_vars, LogParser* log_parser_ptr);
 
         /**
          * Copy the tokens representing a log out of the source buffer by iterating them.
@@ -202,12 +202,13 @@ namespace compressor_frontend::library {
          * @return View of the variable from the source buffer.
          */
         const Token* getVarByName (const std::string& var_name, size_t occurrence) {
-            return getVarByID(m_var_ids[var_name], occurrence);
+            uint32_t& var_id = m_log_parser_ptr->m_lexer.m_symbol_id[var_name];
+            return getVarByID(var_id, occurrence);
         }
 
         // Convenience functions for common variables
         const Token* getVerbosity () {
-            return getVarByID(LogView::m_verbosity_id, 0);
+            return getVarByID(m_verbosity_id, 0);
         }
 
         // assumes there is a timestamp
@@ -287,54 +288,29 @@ namespace compressor_frontend::library {
             m_log_var_occurrences[token_type_id].push_back(token_ptr);
         }
 
-        static void set_var_ids (std::map<std::string, uint32_t>& var_ids) {
-            m_var_ids = var_ids;
-        }
-
-        static void set_verbosity_id (uint32_t verbosity_id) {
-            m_verbosity_id = verbosity_id;
-        }
-
         LogOutputBuffer m_log_output_buffer;
 
     private:
         bool m_multiline;
         std::vector<std::vector<const Token*>> m_log_var_occurrences;
-        /// TODO: no reason for these to be static, point at the parser instead
-        static std::map<std::string, uint32_t> m_var_ids;
-        static uint32_t m_verbosity_id;
-        // placeholder for internal data structure: essentially an array of tokens
+        LogParser* m_log_parser_ptr;
+        uint32_t m_verbosity_id;
     };
 
     /**
      * Contains all of the data necessary to form the log.
      * Essentially replaces the source buffers originally used by the parser.
-     * On construction tokens will now point to local_buffer rather than
+     * On construction tokens will now point to buffer rather than
      * the original source buffers.
      */
     class Log : public LogView {
         public:
             // Equivalent to LogView::deepCopy
-            Log (LogView* src_ptr, uint32_t num_vars) : LogView(num_vars) {
-                m_log_output_buffer = src_ptr->m_log_output_buffer;
-                setMultiline(src_ptr->isMultiLine());
-                /// TODO: copy parser pointer instead
-                //static std::map<std::string, uint32_t> m_var_ids;
-                //static uint32_t m_verbosity_id;
-
-                uint32_t start = 0;
-                if (false == src_ptr->m_log_output_buffer.has_timestamp()) {
-                    start = 1;
-                }
-                for(uint32_t i = 0; i < src_ptr->m_log_output_buffer.storage().size(); i++) {
-                    // rebuild buffer
-                    // make tokens
-                    // add to m_log_var_occurrences
-                }
-            }
+            Log (LogView* src_ptr, uint32_t num_vars,  LogParser* log_parser_ptr);
 
         private:
-            char* local_buffer;
+            char* m_buffer;
+            uint32_t m_buffer_size;
         };
 //
 //    /**

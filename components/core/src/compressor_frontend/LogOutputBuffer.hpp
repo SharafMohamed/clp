@@ -51,6 +51,10 @@ namespace compressor_frontend {
             m_storage.set_value(pos, value);
         }
 
+        [[nodiscard]] const Token&  get_token (uint32_t pos) const {
+            return m_storage.get_value(pos);
+        }
+
         void set_curr_token (Token& value) {
             m_storage.set_curr_value(value);
         }
