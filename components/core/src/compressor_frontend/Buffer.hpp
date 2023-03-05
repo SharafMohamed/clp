@@ -31,7 +31,7 @@ namespace compressor_frontend {
     class Buffer {
     public:
         Buffer () : m_pos(0), m_active_storage(m_static_storage),
-                    m_curr_storage_size(cStaticByteBuffSize) { }
+                    m_active_size(cStaticByteBuffSize) { }
 
         ~Buffer () {
             reset();
@@ -61,6 +61,12 @@ namespace compressor_frontend {
             return m_active_storage[m_pos];
         }
 
+        void set_active_buffer (Item* storage, uint32_t size, uint32_t pos) {
+            m_active_storage = storage;
+            m_active_size = size;
+            m_pos = pos;
+        }
+
         [[nodiscard]] const Item* get_active_buffer () const {
             return m_active_storage;
         }
@@ -70,7 +76,7 @@ namespace compressor_frontend {
         }
 
         [[nodiscard]] uint32_t size () const {
-            return m_curr_storage_size;
+            return m_active_size;
         }
 
         [[nodiscard]] uint32_t static_size () const {
@@ -84,22 +90,22 @@ namespace compressor_frontend {
             }
             m_dynamic_storages.clear();
             m_active_storage = m_static_storage;
-            m_curr_storage_size = cStaticByteBuffSize;
+            m_active_size = cStaticByteBuffSize;
         }
 
         const Item* double_size() {
             Item* new_dynamic_buffer = m_dynamic_storages.emplace_back(
-                                            (Item*)malloc(2 * m_curr_storage_size * sizeof(Item)));
+                                            (Item*)malloc(2 * m_active_size * sizeof(Item)));
             if (new_dynamic_buffer == nullptr) {
                 SPDLOG_ERROR("Failed to allocate output buffer of size {}.",
-                             2 * m_curr_storage_size);
+                             2 * m_active_size);
                 /// TODO: update exception when an exception class is added
                 /// (e.g., "failed_to_compress_log_continue_to_next")
                 throw std::runtime_error(
                         "Lexer failed to find a match after checking entire buffer");
             }
             m_active_storage = new_dynamic_buffer;
-            m_curr_storage_size *= 2;
+            m_active_size *= 2;
             return new_dynamic_buffer;
         }
 
@@ -116,7 +122,7 @@ namespace compressor_frontend {
 
     protected:
         uint32_t m_pos;
-        uint32_t m_curr_storage_size;
+        uint32_t m_active_size;
         Item* m_active_storage;
         std::vector<Item*> m_dynamic_storages;
         Item m_static_storage[cStaticByteBuffSize];

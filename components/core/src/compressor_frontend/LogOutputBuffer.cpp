@@ -1,4 +1,4 @@
-#include "TokenOutputBuffer.hpp"
+#include "LogOutputBuffer.hpp"
 
 // C++ standard libraries
 #include <string>
@@ -9,7 +9,7 @@
 using std::string;
 
 namespace compressor_frontend {
-    void TokenOutputBuffer::advance_to_next_token () {
+    void LogOutputBuffer::advance_to_next_token () {
         m_storage.increment_pos();
         if (m_storage.pos() == m_storage.size()) {
             if (m_storage.size() == m_storage.static_size()) {

@@ -88,6 +88,11 @@ namespace compressor_frontend {
             return m_log_fully_consumed;
         }
 
+        void set_storage (char* storage, uint32_t size, uint32_t pos, bool finished_reading_input) {
+            m_storage.set_active_buffer(storage, size, pos);
+            finished_reading_input = finished_reading_input;
+        }
+
         [[nodiscard]] const Buffer<char>& storage () const {
             return m_storage;
         }
@@ -99,7 +104,7 @@ namespace compressor_frontend {
         uint32_t m_consumed_pos;
         bool m_last_read_first_half;
         // the log has been completely read into the buffer
-        bool m_finished_reading_log;
+        bool finished_reading_input;
         // the buffer has finished iterating over the entire log
         bool m_log_fully_consumed;
         // contains the static and dynamic character buffers

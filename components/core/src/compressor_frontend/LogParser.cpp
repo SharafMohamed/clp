@@ -25,8 +25,9 @@ using std::unique_ptr;
 using std::vector;
 
 namespace compressor_frontend {
-    LogParser::LogParser (const string& schema_file_path) {
-        std::unique_ptr<compressor_frontend::SchemaFileAST> schema_ast = compressor_frontend::SchemaParser::try_schema_file(schema_file_path);
+    LogParser::LogParser (const string& schema_file_path) : m_initialized (false) {
+        std::unique_ptr<compressor_frontend::SchemaFileAST> schema_ast =
+                compressor_frontend::SchemaParser::try_schema_file(schema_file_path);
         add_delimiters(schema_ast->m_delimiters);
         add_rules(schema_ast);
         m_lexer.generate();
@@ -114,14 +115,18 @@ namespace compressor_frontend {
     }
 
 
-    void LogParser::reset_new(TokenOutputBuffer& output_buffer) {
+    void LogParser::reset_new(LogOutputBuffer& output_buffer) {
         m_lexer.reset_new();
         output_buffer.set_has_delimiters(m_lexer.get_has_delimiters());
     }
 
-    /// TODO: if the first text is a variable in the no timestamp case you lose the first variable to static text since it has no leading delim
-    bool LogParser::init (LogInputBuffer& input_buffer, TokenOutputBuffer& output_buffer) {
+    /// TODO: if the first text is a variable in the no timestamp case you lose the first variable
+    /// to static text since it has no leading delim
+    bool LogParser::init (LogInputBuffer& input_buffer, LogOutputBuffer& output_buffer) {
         Token next_token = get_next_symbol_new(input_buffer);
+        // make sure initialized is set only after getting next_token, as this call can fail if
+        // the input_buffer does not fit a single token (extremely unlikely edge-case)
+        m_initialized = true;
         output_buffer.set_token(0, next_token);
         if (next_token.m_type_ids_ptr->at(0) == (int) SymbolID::TokenEndID) {
             return true;
@@ -138,11 +143,16 @@ namespace compressor_frontend {
         return false;
     }
 
-    LogParser::ParsingAction LogParser::parse_new (LogInputBuffer& input_buffer, TokenOutputBuffer& output_buffer) {
+    LogParser::ParsingAction LogParser::parse_new (LogInputBuffer& input_buffer,
+                                                   LogOutputBuffer& output_buffer) {
         if (m_has_start_of_log_message) {
-            // switch to timestamped messages if a timestamp is ever found at the start of line (potentially dangerous as it never switches back)
-            /// TODO: potentially switch back if a new line is reached and the message is too long (100x static message size)
-            if (m_start_of_log_message.m_type_ids_ptr->at(0) == (int) SymbolID::TokenNewlineTimestampId) {
+            // switch to timestamped messages if a timestamp is ever found at the start of line
+            // (potentially dangerous as it never switches back)
+            /// TODO: potentially switch back if a new line is reached and the message is too long
+            /// (100x static message size)
+            if (m_start_of_log_message.m_type_ids_ptr->at(0) ==
+                (int) SymbolID::TokenNewlineTimestampId)
+            {
                 output_buffer.set_has_timestamp(true);
             }
             if (output_buffer.has_timestamp()) {

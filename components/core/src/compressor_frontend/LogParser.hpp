@@ -12,7 +12,7 @@
 #include "../Stopwatch.hpp"
 #include "LALR1Parser.hpp"
 #include "LogInputBuffer.hpp"
-#include "TokenOutputBuffer.hpp"
+#include "LogOutputBuffer.hpp"
 #include "SchemaParser.hpp"
 
 namespace compressor_frontend {
@@ -35,7 +35,7 @@ namespace compressor_frontend {
          * Reset the parser. Return true if EOF was reached, false otherwise.
          * @param output_buffer
          */
-        void reset_new (TokenOutputBuffer& output_buffer);
+        void reset_new (LogOutputBuffer& output_buffer);
 
         /**
          * Initialize the parser. Return true if EOF was reached, false otherwise.
@@ -43,7 +43,7 @@ namespace compressor_frontend {
          * @param output_buffer
          * @return bool
          */
-        bool init (LogInputBuffer& input_buffer, TokenOutputBuffer& output_buffer);
+        bool init (LogInputBuffer& input_buffer, LogOutputBuffer& output_buffer);
 
         /**
          * /// TODO: this description will need to change after adding it directly into the dictionary writer
@@ -51,7 +51,7 @@ namespace compressor_frontend {
          * @param buffer
          * @return int
          */
-        ParsingAction parse_new (LogInputBuffer& input_buffer, TokenOutputBuffer& output_buffer);
+        ParsingAction parse_new (LogInputBuffer& input_buffer, LogOutputBuffer& output_buffer);
 
         void flip_lexer_states(uint32_t old_storage_size) {
             m_lexer.flip_states(old_storage_size);
@@ -59,6 +59,10 @@ namespace compressor_frontend {
 
         std::string get_id_symbol(int id) {
             return m_lexer.m_id_symbol[id];
+        }
+
+        [[nodiscard]] bool initialized () const {
+            return m_initialized;
         }
 
     private:
@@ -85,6 +89,7 @@ namespace compressor_frontend {
 
         bool m_has_start_of_log_message;
         Token m_start_of_log_message;
+        bool m_initialized;
 
     };
 }

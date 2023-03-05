@@ -52,6 +52,7 @@ namespace compressor_frontend {
         uint32_t m_buffer_size;
         uint32_t m_line;
         const std::vector<int>* m_type_ids_ptr;
+        // m_type_ids_set is empty unless explicitly set
         std::set<int> m_type_ids_set;
     };
 }

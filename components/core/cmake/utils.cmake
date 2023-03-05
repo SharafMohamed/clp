@@ -18,8 +18,8 @@ set(SOURCE_FILES_make-dictionaries-readable
         ${CMAKE_CURRENT_SOURCE_DIR}/src/compressor_frontend/Lexer.tpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/compressor_frontend/LogParser.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/ src/compressor_frontend/LogParser.hpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/compressor_frontend/TokenOutputBuffer.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/compressor_frontend/TokenOutputBuffer.hpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/compressor_frontend/LogOutputBuffer.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/compressor_frontend/LogOutputBuffer.hpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/compressor_frontend/SchemaParser.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/compressor_frontend/SchemaParser.hpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/compressor_frontend/Token.cpp

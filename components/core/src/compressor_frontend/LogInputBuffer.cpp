@@ -14,7 +14,7 @@ using std::to_string;
 namespace compressor_frontend {
     void LogInputBuffer::reset () {
         m_log_fully_consumed = false;
-        m_finished_reading_log = false;
+        finished_reading_input = false;
         m_consumed_pos = 0;
         m_pos_last_read_char = 0;
         m_last_read_first_half = false;
@@ -22,7 +22,7 @@ namespace compressor_frontend {
     }
 
     bool LogInputBuffer::read_is_safe () {
-        if (m_finished_reading_log) {
+        if (finished_reading_input) {
             return false;
         }
         // If the next message starts at 0, the previous ended at size - 1
@@ -73,7 +73,7 @@ namespace compressor_frontend {
     }
 
     char LogInputBuffer::get_next_character () {
-        if (m_finished_reading_log && m_storage.pos() == m_pos_last_read_char) {
+        if (finished_reading_input && m_storage.pos() == m_pos_last_read_char) {
             m_log_fully_consumed = true;
             return utf8::cCharEOF;
         }
@@ -95,7 +95,7 @@ namespace compressor_frontend {
         m_storage.read(reader, read_offset, m_storage.size() / 2, bytes_read);
         m_last_read_first_half = !m_last_read_first_half;
         if (bytes_read < m_storage.size() / 2) {
-            m_finished_reading_log = true;
+            finished_reading_input = true;
         }
         m_pos_last_read_char += bytes_read;
         if (m_pos_last_read_char > m_storage.size()) {

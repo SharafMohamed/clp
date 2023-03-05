@@ -13,7 +13,7 @@
 
 // Project headers
 #include "../compressor_frontend/LogInputBuffer.hpp"
-#include "../compressor_frontend/TokenOutputBuffer.hpp"
+#include "../compressor_frontend/LogOutputBuffer.hpp"
 #include "../Profiler.hpp"
 #include "utils.hpp"
 
@@ -151,7 +151,7 @@ namespace clp {
             // Create buffers statically
             /// TODO: create this and pass them in like m_log_parser to avoid re-initializing each time
             static compressor_frontend::LogInputBuffer input_buffer;
-            static compressor_frontend::TokenOutputBuffer output_buffer;
+            static compressor_frontend::LogOutputBuffer output_buffer;
             input_buffer.reset();
             output_buffer.reset();
             input_buffer.read(reader);

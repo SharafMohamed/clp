@@ -177,10 +177,12 @@ set(SOURCE_FILES_clp
         src/compressor_frontend/LALR1Parser.tpp
         src/compressor_frontend/Lexer.hpp
         src/compressor_frontend/Lexer.tpp
+    src/compressor_frontend/library/Api.hpp
+    src/compressor_frontend/library/Api.cpp
         src/compressor_frontend/LogParser.cpp
         src/compressor_frontend/LogParser.hpp
-    src/compressor_frontend/TokenOutputBuffer.cpp
-    src/compressor_frontend/TokenOutputBuffer.hpp
+    src/compressor_frontend/LogOutputBuffer.cpp
+    src/compressor_frontend/LogOutputBuffer.hpp
         src/compressor_frontend/SchemaParser.cpp
         src/compressor_frontend/SchemaParser.hpp
         src/compressor_frontend/Token.cpp
@@ -342,8 +344,8 @@ set(SOURCE_FILES_clg
         src/compressor_frontend/LALR1Parser.tpp
         src/compressor_frontend/Lexer.hpp
         src/compressor_frontend/Lexer.tpp
-    src/compressor_frontend/TokenOutputBuffer.cpp
-    src/compressor_frontend/TokenOutputBuffer.hpp
+    src/compressor_frontend/LogOutputBuffer.cpp
+    src/compressor_frontend/LogOutputBuffer.hpp
         src/compressor_frontend/SchemaParser.cpp
         src/compressor_frontend/SchemaParser.hpp
         src/compressor_frontend/Token.cpp
@@ -494,8 +496,8 @@ set(SOURCE_FILES_clo
         src/compressor_frontend/LALR1Parser.tpp
         src/compressor_frontend/Lexer.hpp
         src/compressor_frontend/Lexer.tpp
-    src/compressor_frontend/TokenOutputBuffer.cpp
-    src/compressor_frontend/TokenOutputBuffer.hpp
+    src/compressor_frontend/LogOutputBuffer.cpp
+    src/compressor_frontend/LogOutputBuffer.hpp
         src/compressor_frontend/SchemaParser.cpp
         src/compressor_frontend/SchemaParser.hpp
         src/compressor_frontend/Token.cpp
@@ -652,8 +654,8 @@ set(SOURCE_FILES_unitTest
         src/compressor_frontend/Lexer.tpp
         src/compressor_frontend/LogParser.cpp
         src/compressor_frontend/LogParser.hpp
-    src/compressor_frontend/TokenOutputBuffer.cpp
-    src/compressor_frontend/TokenOutputBuffer.hpp
+    src/compressor_frontend/LogOutputBuffer.cpp
+    src/compressor_frontend/LogOutputBuffer.hpp
         src/compressor_frontend/SchemaParser.cpp
         src/compressor_frontend/SchemaParser.hpp
         src/compressor_frontend/Token.cpp

@@ -18,7 +18,7 @@ namespace compressor_frontend {
      * with twice the size of the current buffer and is added to the list of
      * dynamic buffers.
      */
-    class TokenOutputBuffer {
+    class LogOutputBuffer {
     public:
         /**
          * Advances the position of the buffer so that it is at the next token.
@@ -72,6 +72,7 @@ namespace compressor_frontend {
         bool m_has_delimiters = false;
         // contains the static and dynamic Token buffers
         Buffer<Token> m_storage;
+        std::vector<Token*> m_variable_occurrences;
     };
 }
 
