@@ -1,12 +1,9 @@
 #include "Api.hpp"
 
-// Project Headers
-#include "../../FileReader.hpp"
-#include "../LogInputBuffer.hpp"
-
 namespace compressor_frontend::library {
 
-    BufferParser::BufferParser (Schema& schema) : m_log_parser(schema.get_schema_ast_ptr()), m_log_input_buffer() {
+    BufferParser::BufferParser (Schema& schema) : m_log_parser(schema.get_schema_ast_ptr()),
+                                                  m_log_input_buffer() {
         m_log_parser.reset();
         m_log_input_buffer.reset();
     }
@@ -56,15 +53,14 @@ namespace compressor_frontend::library {
             }
             log_views.push_back(log_view);
         }
-        if (0 == log_views.size() || count > log_views.size()) {
+        if (log_views.empty() || count > log_views.size()) {
             return error_code;
         }
         return 0;
     }
 
     ReaderParser::ReaderParser (Schema& schema, Reader& reader) :
-            m_log_parser(schema.get_schema_ast_ptr()), m_log_input_buffer(), m_reader(reader),
-            m_pos (0), m_finished_reading(false) {
+            m_log_parser(schema.get_schema_ast_ptr()), m_log_input_buffer(), m_reader(reader) {
         m_log_parser.reset();
         m_log_input_buffer.reset();
         m_log_input_buffer.read(m_reader);
@@ -117,8 +113,9 @@ namespace compressor_frontend::library {
                         compressor_frontend::parse_stopwatch.stop();
                         if (string(err.what()) == "Input buffer about to overflow") {
                             uint32_t old_storage_size;
-                            bool flipped_static_buffer = m_log_input_buffer.increase_capacity_and_read(
-                                    m_reader, old_storage_size);
+                            bool flipped_static_buffer =
+                                    m_log_input_buffer.increase_capacity_and_read(m_reader,
+                                                                                 old_storage_size);
                             if (flipped_static_buffer) {
                                 m_log_parser.flip_lexer_states(old_storage_size);
                             }
@@ -154,7 +151,7 @@ namespace compressor_frontend::library {
         if (m_log_input_buffer.log_fully_consumed()) {
             return 0;
         }
-        if (0 == log_views.size() || count > log_views.size()) {
+        if (log_views.empty() || count > log_views.size()) {
             return error_code;
         }
         return 0;
@@ -162,7 +159,7 @@ namespace compressor_frontend::library {
 
     FileParser::FileParser (Schema& schema, Reader& reader) : m_reader_parser(schema, reader) { }
 
-    std::optional<FileParser> FileParserFromFile (const char* schema_file,
+    std::optional<FileParser> FileParser::FileParserFromFile (const char* schema_file,
                                                   std::string& log_file_name) {
         Schema schema(schema_file);
         std::shared_ptr<FileReader> file_reader_ptr = std::make_shared<FileReader>();
@@ -172,7 +169,8 @@ namespace compressor_frontend::library {
         return file_parser;
     }
 
-    std::optional<FileParser> FileParserFromSchema (Schema& schema, std::string& log_file_name) {
+    std::optional<FileParser> FileParser::FileParserFromSchema (Schema& schema,
+                                                                std::string& log_file_name) {
         std::shared_ptr<FileReader> file_reader_ptr = std::make_shared<FileReader>();
         file_reader_ptr->open(log_file_name);
         FileReaderWrapper file_reader_wrapper(file_reader_ptr);
@@ -189,13 +187,13 @@ namespace compressor_frontend::library {
     }
 
     LogView::LogView (uint32_t num_vars, LogParser* log_parser_ptr) :
-                                                                  m_log_var_occurrences(num_vars) {
+            m_log_var_occurrences(num_vars), m_multiline(false) {
         m_log_parser_ptr = log_parser_ptr;
         m_verbosity_id = m_log_parser_ptr->m_lexer.m_symbol_id["verbosity"];
     }
 
     Log LogView::deepCopy () {
-        return Log(this, this->m_log_var_occurrences.size(), this->m_log_parser_ptr);
+        return {this, (uint32_t) this->m_log_var_occurrences.size(), this->m_log_parser_ptr};
     }
 
     Log::Log (LogView* src_ptr, uint32_t num_vars,  LogParser* log_parser_ptr) :
@@ -221,9 +219,9 @@ namespace compressor_frontend::library {
             uint32_t start_pos = curr_pos;
             for (uint32_t j = token.m_start_pos; j < token.m_end_pos; j++) {
                 m_buffer[curr_pos++] = token.m_buffer[j];
-                Token copied_token = {start_pos, curr_pos, m_buffer, m_buffer_size, 0, token.m_type_ids_ptr};
+                Token copied_token = {start_pos, curr_pos, m_buffer, m_buffer_size, 0,
+                                      token.m_type_ids_ptr};
                 m_log_output_buffer.set_curr_token(copied_token);
-                uint32_t token_type = copied_token.m_type_ids_ptr->at(0);
                 m_log_output_buffer.advance_to_next_token();
             }
         }

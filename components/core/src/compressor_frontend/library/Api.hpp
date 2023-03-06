@@ -6,6 +6,7 @@
 #include <map>
 #include <optional>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 // Project Headers
@@ -26,7 +27,7 @@ namespace compressor_frontend::library {
      */
     class BufferParser {
     public:
-        BufferParser (Schema& schema);
+        explicit BufferParser (Schema& schema);
 
         /**
          * Construct statically to more cleanly report errors building the parser
@@ -121,15 +122,12 @@ namespace compressor_frontend::library {
         Reader m_reader;
         LogParser m_log_parser;
         LogInputBuffer m_log_input_buffer;
-        char* m_buffer;
-        uint32_t m_pos;
-        size_t m_amount_read;
-        bool m_finished_reading;
     };
 
     class FileReaderWrapper : public Reader {
     public:
-        FileReaderWrapper(std::shared_ptr<FileReader> reader) : m_reader(reader) {}
+        explicit FileReaderWrapper(std::shared_ptr<FileReader> reader) :
+                m_reader(std::move(reader)) {}
 
         virtual bool read(char* buffer, size_t maxLength, size_t& read_to) {
             return m_reader->read(buffer, maxLength, read_to);
@@ -247,7 +245,7 @@ namespace compressor_frontend::library {
          * log or exhausting the source (e.g. EOF).
          * @return True if the log spans multiple lines.
          */
-        bool isMultiLine () {
+        [[nodiscard]] bool isMultiLine () const {
             return m_multiline;
         }
 
@@ -283,8 +281,7 @@ namespace compressor_frontend::library {
             if (false == m_log_output_buffer.has_timestamp()) {
                 start = 1;
             }
-            uint32_t static_text_id =
-                    (uint32_t) compressor_frontend::SymbolID::TokenUncaughtStringID;
+            auto static_text_id = (uint32_t) compressor_frontend::SymbolID::TokenUncaughtStringID;
             for (const Token* token_ptr : m_log_var_occurrences[static_text_id]) {
                 log_type += token_ptr->get_string();
             }
@@ -328,9 +325,9 @@ namespace compressor_frontend::library {
      */
     class Schema {
     public:
-        Schema () {}
+        Schema () = default;
 
-        Schema (const std::string& schema_file_path);
+        explicit Schema (const std::string& schema_file_path);
 
 //        Schema (std::string schema_string);
 
