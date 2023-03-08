@@ -66,6 +66,8 @@ namespace compressor_frontend {
             return m_initialized;
         }
 
+        std::string m_schema_file_path;
+
     private:
         /**
          * Request the next symbol from the lexer

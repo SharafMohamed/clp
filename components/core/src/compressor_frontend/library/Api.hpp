@@ -34,9 +34,9 @@ namespace compressor_frontend::library {
          * from the given schema. Can construct from from a file, or a Schema
          * object.
          */
-        static std::optional<BufferParser> BufferParserFromFile (const char* schema_file);
+        static BufferParser buffer_parser_from_file (const char* schema_file);
 
-        static std::optional<BufferParser> BufferParserFromSchema (Schema& schema);
+        static BufferParser buffer_parser_from_schema (Schema& schema);
 
         /**
          * Attempts to parse the next log inside buf, up to size. The bytes between
@@ -53,7 +53,7 @@ namespace compressor_frontend::library {
          * @return 0 if next log in buf parsed as a LogView.
          * @return ERROR_CODE if no log parsed.
          */
-         int getNextLogView (char* buf, size_t size, size_t& read_to, LogView& log_view,
+         int get_next_log_view (char* buf, size_t size, size_t& read_to, LogView& log_view,
                              bool finished_reading_input = false);
 
         /**
@@ -70,13 +70,22 @@ namespace compressor_frontend::library {
          * @return 0 if next log in buf parsed as a LogView.
          * @return ERROR_CODE if no log parsed.
          */
-        int getNLogViews (char* buf, size_t size, size_t& read_to,
+        int get_N_log_views (char* buf, size_t size, size_t& read_to,
                           std::vector<LogView>& log_views, size_t count,
                           bool finished_reading_input = false);
+
+        const LogParser* get_log_parser() const {
+            return &m_log_parser;
+        }
+
+        bool done () const {
+            return m_done;
+        }
 
     private:
         LogParser m_log_parser;
         LogInputBuffer m_log_input_buffer;
+        bool m_done;
     };
 
     /**
@@ -93,10 +102,10 @@ namespace compressor_frontend::library {
          * from the given schema. Can construct from from a file, or a Schema
          * object.
          */
-        static std::optional<ReaderParser>
-        ReaderParserFromFile (const char* schema_file, Reader& reader);
+        static ReaderParser
+        reader_parser_from_file (std::string& schema_file_name, Reader& reader);
 
-        static std::optional<ReaderParser> ReaderParserFromSchema (Schema& schema, Reader& r);
+        static ReaderParser reader_parser_from_schema (Schema& schema, Reader& r);
 
         /**
          * Attempts to parse the next log from the source it was created with.
@@ -105,7 +114,7 @@ namespace compressor_frontend::library {
          * @return 0 if next log in buf parsed as a LogView.
          * @return ERROR_CODE if no log parsed.
          */
-        int getNextLogView (LogView& log_view);
+        int get_next_log_view (LogView& log_view);
 
         /**
          * Attempts to parse the next N logs from the source it was created with.
@@ -116,25 +125,21 @@ namespace compressor_frontend::library {
          * @return 0 if next log in buf parsed as a LogView.
          * @return ERROR_CODE if no log parsed.
          */
-        int getNLogViews (std::vector<LogView>& log_views, size_t count = 0);
+        int get_N_log_views (std::vector<LogView>& log_views, size_t count = 0);
+
+        const LogParser* get_log_parser() const {
+            return &m_log_parser;
+        }
+
+        bool done () const {
+            return m_done;
+        }
 
     private:
         Reader m_reader;
         LogParser m_log_parser;
         LogInputBuffer m_log_input_buffer;
-    };
-
-    class FileReaderWrapper : public Reader {
-    public:
-        explicit FileReaderWrapper(std::shared_ptr<FileReader> reader) :
-                m_reader(std::move(reader)) {}
-
-        virtual bool read(char* buffer, size_t maxLength, size_t& read_to) {
-            return m_reader->read(buffer, maxLength, read_to);
-        }
-
-    private:
-        std::shared_ptr<FileReader> m_reader;
+        bool m_done;
     };
 
     /**
@@ -143,18 +148,18 @@ namespace compressor_frontend::library {
      */
     class FileParser {
     public:
-        FileParser (Schema& schema, Reader& reader);
+        FileParser (Schema& schema, Reader& reader, std::unique_ptr<FileReader> file_reader_ptr);
 
         /**
          * Construct statically to more cleanly report errors building the parser
          * from the given schema. Can construct from from a file, or a Schema
          * object.
          */
-        static std::optional<FileParser>
-        FileParserFromFile (const char* schema_file, std::string& log_file_name);
+        static FileParser
+        file_parser_from_file (const char* schema_file, std::string& log_file_name);
 
-        static std::optional<FileParser>
-        FileParserFromSchema (Schema& schema, std::string& log_file_name);
+        static FileParser
+        file_parser_from_schema (Schema& schema, std::string& log_file_name);
 
         /**
          * Attempts to parse the next log from the source it was created with.
@@ -163,7 +168,7 @@ namespace compressor_frontend::library {
          * @return 0 if next log in buf parsed as a LogView.
          * @return ERROR_CODE if no log parsed.
          */
-        int getNextLogView (LogView& log_view);
+        int get_next_log_view (LogView& log_view);
 
         /**
          * Attempts to parse the next N logs from the source it was created with.
@@ -174,9 +179,15 @@ namespace compressor_frontend::library {
          * @return 0 if next log in buf parsed as a LogView.
          * @return ERROR_CODE if no log parsed.
          */
-        int getNLogViews (std::vector<LogView>& log_views, size_t count = 0);
+        int get_N_log_views (std::vector<LogView>& log_views, size_t count = 0);
+
+        const LogParser* get_log_parser() const {
+            return m_reader_parser.get_log_parser();
+        }
+
     private:
         ReaderParser m_reader_parser;
+        std::unique_ptr<FileReader> m_file_reader_ptr;
 
     };
 
@@ -192,7 +203,7 @@ namespace compressor_frontend::library {
     class LogView {
     public:
         // Likely to only be used by the parser itself.
-        LogView (uint32_t num_vars, LogParser* log_parser_ptr);
+        LogView (const LogParser* log_parser_ptr);
 
         /**
          * Copy the tokens representing a log out of the source buffer by iterating them.
@@ -207,13 +218,13 @@ namespace compressor_frontend::library {
          * @return View of the variable from the source buffer.
          */
         const Token* getVarByName (const std::string& var_name, size_t occurrence) {
-            uint32_t& var_id = m_log_parser_ptr->m_lexer.m_symbol_id[var_name];
+            uint32_t var_id = m_log_parser_ptr->m_lexer.m_symbol_id.at(var_name);
             return getVarByID(var_id, occurrence);
         }
 
         // Convenience functions for common variables
         const Token* getVerbosity () {
-            return getVarByID(m_verbosity_id, 0);
+            return getVarByName("verbosity", 0);
         }
 
         // assumes there is a timestamp
@@ -297,8 +308,7 @@ namespace compressor_frontend::library {
     private:
         bool m_multiline;
         std::vector<std::vector<const Token*>> m_log_var_occurrences;
-        LogParser* m_log_parser_ptr;
-        uint32_t m_verbosity_id;
+        const LogParser* m_log_parser_ptr;
     };
 
     /**
@@ -310,7 +320,7 @@ namespace compressor_frontend::library {
     class Log : public LogView {
         public:
             // Equivalent to LogView::deepCopy
-            Log (LogView* src_ptr, uint32_t num_vars,  LogParser* log_parser_ptr);
+            Log (LogView* src_ptr, const LogParser* log_parser_ptr);
 
         private:
             char* m_buffer;
@@ -329,13 +339,9 @@ namespace compressor_frontend::library {
 
         explicit Schema (const std::string& schema_file_path);
 
-//        Schema (std::string schema_string);
-
         void load_from_file (const std::string& schema_file_path);
-//
-//        void load_from_string (std::string schema_string);
-//
-//        void add_variable (std::string var_name, std::string regex);
+
+        void add_variable (std::string var_name, std::string regex);
 //
 //        void remove_variable (std::string var_name);
 //

@@ -12,6 +12,7 @@
 #include <archive_entry.h>
 
 // Project headers
+#include "../compressor_frontend/library/Api.hpp"
 #include "../compressor_frontend/LogInputBuffer.hpp"
 #include "../compressor_frontend/LogOutputBuffer.hpp"
 #include "../Profiler.hpp"
@@ -20,6 +21,9 @@
 extern Stopwatch parse_stopwatch;
 extern uint32_t number_of_log_messages;
 
+using compressor_frontend::library::LogView;
+using compressor_frontend::library::ReaderParser;
+using compressor_frontend::library::Reader;
 using compressor_frontend::LogParser;
 using std::cout;
 using std::endl;
@@ -111,7 +115,7 @@ namespace clp {
                                                 file_to_compress.get_group_id(), archive_writer, m_file_reader);
             } else {
                 SPDLOG_WARN("Compressing {}", file_name);
-                parse_and_encode_new(target_data_size_of_dicts, archive_user_config, target_encoded_file_size,
+                parse_and_encode_with_library (target_data_size_of_dicts, archive_user_config, target_encoded_file_size,
                                      file_to_compress.get_path_for_compression(),
                                      file_to_compress.get_group_id(), archive_writer, m_file_reader);
             }
@@ -253,6 +257,55 @@ namespace clp {
         archive_user_config = archive_writer.m_archive_user_config;
     }
 
+    void FileCompressor::parse_and_encode_with_library (size_t target_data_size_of_dicts, streaming_archive::writer::Archive::UserConfig& archive_user_config,
+                                               size_t target_encoded_file_size, const string& path_for_compression, group_id_t group_id,
+                                               streaming_archive::writer::Archive& archive_writer, ReaderInterface& reader)
+    {
+        archive_writer.m_target_data_size_of_dicts = target_data_size_of_dicts;
+        archive_writer.m_archive_user_config = archive_user_config;
+        archive_writer.m_path_for_compression = path_for_compression;
+        archive_writer.m_group_id = group_id;
+        archive_writer.m_target_encoded_file_size = target_encoded_file_size;
+        // Open compressed file
+        archive_writer.create_and_open_file(path_for_compression, group_id, m_uuid_generator(), 0);
+        /// TODO:Add the  m_utf8_validation_buf into the start of the input buffer
+        reader.seek_from_begin(0);
+        archive_writer.old_ts_pattern.clear();
+        Reader reader_wrapper {
+                [&] (char *buf, size_t count, size_t& read_to) -> bool {
+                    return reader.read(buf, count, read_to);
+                }
+        };
+        ReaderParser reader_parser = ReaderParser::reader_parser_from_file(
+                m_log_parser->m_schema_file_path, reader_wrapper);
+        while (false == reader_parser.done()) {
+            LogView log_view(reader_parser.get_log_parser());
+            int error_code = reader_parser.get_next_log_view(log_view);
+            if (0 != error_code) {
+                throw(std::runtime_error("Parsing Failed"));
+            }
+            if (log_view.m_log_output_buffer.has_timestamp() == false) {
+                archive_writer.change_ts_pattern(nullptr);
+            }
+            if (false == reader_parser.done()) {
+                archive_writer.write_msg_using_schema(
+                        log_view.m_log_output_buffer.storage().get_mutable_active_buffer(),
+                        log_view.m_log_output_buffer.storage().pos(),
+                        log_view.m_log_output_buffer.has_delimiters(),
+                        log_view.m_log_output_buffer.has_timestamp());
+            } else {
+                archive_writer.write_msg_using_schema(
+                        log_view.m_log_output_buffer.storage().get_mutable_active_buffer(),
+                        log_view.m_log_output_buffer.storage().pos(),
+                        log_view.m_log_output_buffer.has_delimiters(),
+                        log_view.m_log_output_buffer.has_timestamp());
+            }
+        }
+        close_file_and_append_to_segment(archive_writer);
+        // archive_writer_config needs to persist between files
+        archive_user_config = archive_writer.m_archive_user_config;
+    }
+
     void FileCompressor::parse_and_encode_with_heuristic (size_t target_data_size_of_dicts, streaming_archive::writer::Archive::UserConfig& archive_user_config,
                                                           size_t target_encoded_file_size, const string& path_for_compression, group_id_t group_id,
                                                           streaming_archive::writer::Archive& archive_writer, ReaderInterface& reader)
@@ -371,7 +424,7 @@ namespace clp {
                                                     boost_path_for_compression.string(), file_to_compress.get_group_id(), archive_writer,
                                                     m_libarchive_file_reader);
                 } else {
-                    parse_and_encode_new(target_data_size_of_dicts, archive_user_config, target_encoded_file_size, boost_path_for_compression.string(),
+                    parse_and_encode_with_library(target_data_size_of_dicts, archive_user_config, target_encoded_file_size, boost_path_for_compression.string(),
                                          file_to_compress.get_group_id(), archive_writer, m_libarchive_file_reader);
                 }
             } else {

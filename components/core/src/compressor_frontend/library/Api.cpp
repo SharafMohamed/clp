@@ -3,31 +3,35 @@
 namespace compressor_frontend::library {
 
     BufferParser::BufferParser (Schema& schema) : m_log_parser(schema.get_schema_ast_ptr()),
-                                                  m_log_input_buffer() {
+                                                  m_log_input_buffer(), m_done (false) {
         m_log_parser.reset();
         m_log_input_buffer.reset();
     }
 
-    std::optional<BufferParser> BufferParser::BufferParserFromFile (const char* schema_file) {
+    BufferParser BufferParser::buffer_parser_from_file (const char* schema_file) {
         Schema schema(schema_file);
         BufferParser buffer_parser(schema);
         return buffer_parser;
     }
 
-    std::optional<BufferParser> BufferParser::BufferParserFromSchema (Schema& schema) {
+    BufferParser BufferParser::buffer_parser_from_schema (Schema& schema) {
         BufferParser buffer_parser(schema);
         return buffer_parser;
     }
 
 
-    int BufferParser::getNextLogView (char* buf, size_t size, size_t& read_to, LogView& log_view,
+    int BufferParser::get_next_log_view (char* buf, size_t size, size_t& read_to, LogView& log_view,
                                       bool finished_reading_input) {
         log_view.m_log_output_buffer.reset();
         m_log_input_buffer.set_storage(buf, size, read_to, finished_reading_input);
         try {
-            bool done = m_log_parser.init(m_log_input_buffer, log_view.m_log_output_buffer);
-            if (false == done) {
-                m_log_parser.parse_new(m_log_input_buffer, log_view.m_log_output_buffer);
+            m_done = m_log_parser.init(m_log_input_buffer, log_view.m_log_output_buffer);
+            if (false == m_done) {
+                auto result = m_log_parser.parse_new(m_log_input_buffer,
+                                                     log_view.m_log_output_buffer);
+                if (LogParser::ParsingAction::CompressAndFinish == result) {
+                    m_done = true;
+                }
             }
         } catch (std::runtime_error const& err) {
             return -1;
@@ -41,13 +45,13 @@ namespace compressor_frontend::library {
         return 0;
     }
 
-    int BufferParser::getNLogViews (char* buf, size_t size, size_t& read_to,
+    int BufferParser::get_N_log_views (char* buf, size_t size, size_t& read_to,
                                     std::vector<LogView>& log_views, size_t count,
                                     bool finished_reading_input) {
         int error_code;
         while (count == 0 || count > log_views.size() ) {
-            LogView log_view(m_log_parser.m_lexer.m_id_symbol.size(), &m_log_parser);
-            error_code = getNextLogView(buf, size, read_to, log_view, finished_reading_input);
+            LogView log_view(&m_log_parser);
+            error_code = get_next_log_view(buf, size, read_to, log_view, finished_reading_input);
             if (0 != error_code) {
                 break;
             }
@@ -60,34 +64,34 @@ namespace compressor_frontend::library {
     }
 
     ReaderParser::ReaderParser (Schema& schema, Reader& reader) :
-            m_log_parser(schema.get_schema_ast_ptr()), m_log_input_buffer(), m_reader(reader) {
+            m_log_parser(schema.get_schema_ast_ptr()), m_log_input_buffer(), m_reader(reader),
+            m_done (false) {
         m_log_parser.reset();
         m_log_input_buffer.reset();
         m_log_input_buffer.read(m_reader);
     }
 
-    std::optional<ReaderParser> ReaderParser::ReaderParserFromFile (const char* schema_file,
+    ReaderParser ReaderParser::reader_parser_from_file (std::string& schema_file_name,
                                                                     Reader& reader) {
-        Schema schema(schema_file);
+        Schema schema(schema_file_name);
         ReaderParser reader_parser(schema, reader);
         return reader_parser;
 
     }
 
-    std::optional<ReaderParser> ReaderParser::ReaderParserFromSchema (Schema& schema,
+    ReaderParser ReaderParser::reader_parser_from_schema (Schema& schema,
                                                                       Reader& reader) {
         ReaderParser reader_parser(schema, reader);
         return reader_parser;
     }
 
-    int ReaderParser::getNextLogView (LogView& log_view) {
+    int ReaderParser::get_next_log_view (LogView& log_view) {
         try {
             log_view.m_log_output_buffer.reset();
             bool init_successful = false;
-            bool done;
             while (init_successful == false) {
                 try {
-                    done = m_log_parser.init(m_log_input_buffer, log_view.m_log_output_buffer);
+                    m_done = m_log_parser.init(m_log_input_buffer, log_view.m_log_output_buffer);
                     init_successful = true;
                 } catch (std::runtime_error const& err) {
                     if (string(err.what()) == "Input buffer about to overflow") {
@@ -103,11 +107,15 @@ namespace compressor_frontend::library {
                     init_successful = false;
                 }
             }
-            if (false == done) {
+            if (false == m_done) {
                 bool parse_successful = false;
                 while (parse_successful == false) {
                     try {
-                        m_log_parser.parse_new(m_log_input_buffer, log_view.m_log_output_buffer);
+                        auto result = m_log_parser.parse_new(m_log_input_buffer,
+                                                             log_view.m_log_output_buffer);
+                        if (LogParser::ParsingAction::CompressAndFinish == result) {
+                            m_done = true;
+                        }
                         parse_successful = true;
                     } catch (std::runtime_error const& err) {
                         compressor_frontend::parse_stopwatch.stop();
@@ -129,20 +137,24 @@ namespace compressor_frontend::library {
         } catch (std::runtime_error const& err) {
             return -1;
         }
-        for(uint32_t i = 0; i < log_view.m_log_output_buffer.storage().size(); i++) {
+
+        uint32_t start = 0;
+        if (false == log_view.m_log_output_buffer.has_timestamp()) {
+            start = 1;
+        }
+        for(uint32_t i = start; i < log_view.m_log_output_buffer.storage().pos(); i++) {
             const Token* token_ptr =
                     &log_view.m_log_output_buffer.storage().get_active_buffer()[i];
-            const std::vector<int> token_types_ptr = *token_ptr->m_type_ids_ptr;
-            log_view.add_token(token_types_ptr[0], token_ptr);
+            log_view.add_token(token_ptr->m_type_ids_ptr->at(0), token_ptr);
         }
         return 0;
     }
 
-    int ReaderParser::getNLogViews (std::vector<LogView>& log_views, size_t count) {
+    int ReaderParser::get_N_log_views (std::vector<LogView>& log_views, size_t count) {
         int error_code;
         while (count == 0 || count > log_views.size() ) {
-            LogView log_view(m_log_parser.m_lexer.m_id_symbol.size(), &m_log_parser);
-            error_code = getNextLogView(log_view);
+            LogView log_view(&m_log_parser);
+            error_code = get_next_log_view(log_view);
             if (0 != error_code) {
                 break;
             }
@@ -157,47 +169,56 @@ namespace compressor_frontend::library {
         return 0;
     }
 
-    FileParser::FileParser (Schema& schema, Reader& reader) : m_reader_parser(schema, reader) { }
+    FileParser::FileParser (Schema& schema, Reader& reader, std::unique_ptr<FileReader>
+            file_reader_ptr) : m_reader_parser(schema, reader),
+            m_file_reader_ptr(std::move(file_reader_ptr)) { }
 
-    std::optional<FileParser> FileParser::FileParserFromFile (const char* schema_file,
+    FileParser FileParser::file_parser_from_file (const char* schema_file,
                                                   std::string& log_file_name) {
         Schema schema(schema_file);
-        std::shared_ptr<FileReader> file_reader_ptr = std::make_shared<FileReader>();
-        file_reader_ptr->open(log_file_name);
-        FileReaderWrapper file_reader_wrapper(file_reader_ptr);
-        FileParser file_parser(schema, file_reader_wrapper);
+        std::unique_ptr<FileReader> file_reader = make_unique<FileReader>();
+        file_reader->open(log_file_name);
+        Reader reader_wrapper {
+                [&] (char *buf, size_t count, size_t& read_to) -> bool {
+                    return file_reader->read(buf, count, read_to);
+                }
+        };
+        FileParser file_parser(schema, reader_wrapper, std::move(file_reader));
         return file_parser;
     }
 
-    std::optional<FileParser> FileParser::FileParserFromSchema (Schema& schema,
+    FileParser FileParser::file_parser_from_schema (Schema& schema,
                                                                 std::string& log_file_name) {
-        std::shared_ptr<FileReader> file_reader_ptr = std::make_shared<FileReader>();
-        file_reader_ptr->open(log_file_name);
-        FileReaderWrapper file_reader_wrapper(file_reader_ptr);
-        FileParser file_parser(schema, file_reader_wrapper);
+        std::unique_ptr<FileReader> file_reader = make_unique<FileReader>();
+        file_reader->open(log_file_name);
+        Reader reader_wrapper {
+                [&] (char *buf, size_t count, size_t& read_to) -> bool {
+                    return file_reader->read(buf, count, read_to);
+                }
+        };
+        FileParser file_parser(schema, reader_wrapper, std::move(file_reader));
         return file_parser;
     }
 
-    int FileParser::getNextLogView (LogView& log_view) {
-        return m_reader_parser.getNextLogView(log_view);
+    int FileParser::get_next_log_view (LogView& log_view) {
+        return m_reader_parser.get_next_log_view(log_view);
     }
 
-    int FileParser::getNLogViews (std::vector<LogView>& log_views, size_t count) {
-        return m_reader_parser.getNLogViews(log_views, count);
+    int FileParser::get_N_log_views (std::vector<LogView>& log_views, size_t count) {
+        return m_reader_parser.get_N_log_views(log_views, count);
     }
 
-    LogView::LogView (uint32_t num_vars, LogParser* log_parser_ptr) :
-            m_log_var_occurrences(num_vars), m_multiline(false) {
+    LogView::LogView (const LogParser* log_parser_ptr) :
+            m_log_var_occurrences(log_parser_ptr->m_lexer.m_id_symbol.size()), m_multiline(false) {
         m_log_parser_ptr = log_parser_ptr;
-        m_verbosity_id = m_log_parser_ptr->m_lexer.m_symbol_id["verbosity"];
     }
 
     Log LogView::deepCopy () {
-        return {this, (uint32_t) this->m_log_var_occurrences.size(), this->m_log_parser_ptr};
+        return {this, this->m_log_parser_ptr};
     }
 
-    Log::Log (LogView* src_ptr, uint32_t num_vars,  LogParser* log_parser_ptr) :
-                                                                LogView(num_vars, log_parser_ptr) {
+    Log::Log (LogView* src_ptr, const LogParser* log_parser_ptr) :
+                                                                LogView(log_parser_ptr) {
         m_log_output_buffer = src_ptr->m_log_output_buffer;
         setMultiline(src_ptr->isMultiLine());
         uint32_t start = 0;
@@ -239,6 +260,10 @@ namespace compressor_frontend::library {
 
     void Schema::load_from_file (const std::string& schema_file_path) {
         m_schema_ast = compressor_frontend::SchemaParser::try_schema_file(schema_file_path);
+    }
+
+    void Schema::add_variable (std::string var_name, std::string regex) {
+
     }
 
 }
