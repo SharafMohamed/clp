@@ -118,7 +118,6 @@ namespace compressor_frontend::library {
                         }
                         parse_successful = true;
                     } catch (std::runtime_error const& err) {
-                        compressor_frontend::parse_stopwatch.stop();
                         if (string(err.what()) == "Input buffer about to overflow") {
                             uint32_t old_storage_size;
                             bool flipped_static_buffer =

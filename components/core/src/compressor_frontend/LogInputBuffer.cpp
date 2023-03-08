@@ -66,6 +66,7 @@ namespace compressor_frontend {
                            half_old_storage_size);
             flipped_static_buffer = true;
         }
+        m_last_read_first_half = true;
         m_pos_last_read_char = new_storage_size - old_storage_size;
         m_storage.set_pos(old_storage_size);
         read(reader);
@@ -98,7 +99,8 @@ namespace compressor_frontend {
                            half_old_storage_size);
             flipped_static_buffer = true;
         }
-        m_pos_last_read_char = new_storage_size - old_storage_size;
+        m_last_read_first_half = true;
+        m_pos_last_read_char = old_storage_size;
         m_storage.set_pos(old_storage_size);
         read(reader);
         return flipped_static_buffer;
