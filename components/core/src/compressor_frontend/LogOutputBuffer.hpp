@@ -20,6 +20,10 @@ namespace compressor_frontend {
      */
     class LogOutputBuffer {
     public:
+        ~LogOutputBuffer () {
+            reset();
+        }
+
         /**
          * Advances the position of the buffer so that it is at the next token.
          */

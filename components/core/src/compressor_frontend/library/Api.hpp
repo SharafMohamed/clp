@@ -16,7 +16,6 @@
 #include "Reader.hpp"
 
 namespace compressor_frontend::library {
-
     class Log;
     class LogView;
     class Schema;
@@ -203,7 +202,7 @@ namespace compressor_frontend::library {
     class LogView {
     public:
         // Likely to only be used by the parser itself.
-        LogView (const LogParser* log_parser_ptr);
+        explicit LogView (const LogParser* log_parser_ptr);
 
         /**
          * Copy the tokens representing a log out of the source buffer by iterating them.
@@ -288,10 +287,6 @@ namespace compressor_frontend::library {
          */
         std::string getLogType () {
             std::string log_type;
-            uint32_t start = 0;
-            if (false == m_log_output_buffer.has_timestamp()) {
-                start = 1;
-            }
             auto static_text_id = (uint32_t) compressor_frontend::SymbolID::TokenUncaughtStringID;
             for (const Token* token_ptr : m_log_var_occurrences[static_text_id]) {
                 log_type += token_ptr->get_string();
@@ -341,8 +336,8 @@ namespace compressor_frontend::library {
 
         void load_from_file (const std::string& schema_file_path);
 
-        void add_variable (std::string var_name, std::string regex);
-//
+        void add_variable (std::string& var_name, std::string& regex);
+
 //        void remove_variable (std::string var_name);
 //
 //        void add_variables (std::map<std::string, std::string> variables);
@@ -366,7 +361,6 @@ namespace compressor_frontend::library {
 //        void set_delimiters (std::vector<char> delimiters);
 //
 //        void clear ();
-//
 
         [[nodiscard]] const compressor_frontend::SchemaFileAST* get_schema_ast_ptr () const {
             return m_schema_ast.get();

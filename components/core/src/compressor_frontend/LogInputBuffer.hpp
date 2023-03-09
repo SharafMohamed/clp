@@ -47,6 +47,11 @@ namespace compressor_frontend {
                 read(reader);
             }
         }
+        void try_read (library::Reader& reader) {
+            if (read_is_safe()) {
+                read(reader);
+            }
+        }
 
         // TODO: make a library::Reader out of ReaderInterface and remove first type of
         // increase_capacity_and_read

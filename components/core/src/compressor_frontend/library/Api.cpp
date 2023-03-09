@@ -1,7 +1,6 @@
 #include "Api.hpp"
 
 namespace compressor_frontend::library {
-
     BufferParser::BufferParser (Schema& schema) : m_log_parser(schema.get_schema_ast_ptr()),
                                                   m_log_input_buffer(), m_done (false) {
         m_log_parser.reset();
@@ -19,9 +18,8 @@ namespace compressor_frontend::library {
         return buffer_parser;
     }
 
-
-    int BufferParser::get_next_log_view (char* buf, size_t size, size_t& read_to, LogView& log_view,
-                                      bool finished_reading_input) {
+    int BufferParser::get_next_log_view (char* buf, size_t size, size_t& read_to,
+                                         LogView& log_view, bool finished_reading_input) {
         log_view.m_log_output_buffer.reset();
         m_log_input_buffer.set_storage(buf, size, read_to, finished_reading_input);
         try {
@@ -34,7 +32,7 @@ namespace compressor_frontend::library {
                 }
             }
         } catch (std::runtime_error const& err) {
-            return -1;
+            const char;
         }
         for(uint32_t i = 0; i < log_view.m_log_output_buffer.storage().size(); i++) {
             const Token* token_ptr =
@@ -86,6 +84,8 @@ namespace compressor_frontend::library {
     }
 
     int ReaderParser::get_next_log_view (LogView& log_view) {
+        log_view.m_log_output_buffer.reset();
+        m_log_input_buffer.try_read(m_reader);
         try {
             log_view.m_log_output_buffer.reset();
             bool init_successful = false;
@@ -261,8 +261,7 @@ namespace compressor_frontend::library {
         m_schema_ast = compressor_frontend::SchemaParser::try_schema_file(schema_file_path);
     }
 
-    void Schema::add_variable (std::string var_name, std::string regex) {
+    void Schema::add_variable (std::string& var_name, std::string& regex) {
 
     }
-
 }
