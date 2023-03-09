@@ -32,7 +32,7 @@ namespace compressor_frontend::library {
                 }
             }
         } catch (std::runtime_error const& err) {
-            const char;
+            return -1;
         }
         for(uint32_t i = 0; i < log_view.m_log_output_buffer.storage().size(); i++) {
             const Token* token_ptr =
