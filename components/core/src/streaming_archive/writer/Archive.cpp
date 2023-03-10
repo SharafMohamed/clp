@@ -49,7 +49,7 @@ namespace streaming_archive::writer {
         }
     }
 
-    void Archive::open (const UserConfig& user_config, std::map<uint32_t, std::string> m_id_symbol) {
+    void Archive::open (const UserConfig& user_config, std::map<uint32_t, std::string> id_symbol) {
         int retval;
 
         m_id = user_config.id;
@@ -177,14 +177,15 @@ namespace streaming_archive::writer {
         // Open variable dictionary
         string var_dict_path = archive_path_string + '/' + cVarDictFilename;
         string var_dict_segment_index_path = archive_path_string + '/' + cVarSegmentIndexFilename;
-        for(uint32_t i = 0; i < m_id_symbol.size(); i++) {
-            m_var_dict_supply[i].open(var_dict_path + "_" + m_id_symbol[i], var_dict_segment_index_path + "_" + m_id_symbol[i],
+        m_var_dict_ptrs.resize(id_symbol.size());
+        for(uint32_t i = 0; i < id_symbol.size(); i++) {
+            m_var_dict_supply[i].open(var_dict_path + "_" + id_symbol[i], var_dict_segment_index_path + "_" + id_symbol[i],
                             EncodedVariableInterpreter::get_var_dict_id_range_end() - EncodedVariableInterpreter::get_var_dict_id_range_begin());
-            m_var_dict_ptrs.push_back(&m_var_dict_supply[i]);
+            m_var_dict_ptrs[i] = &m_var_dict_supply[i];
         }
-        m_var_ids.resize(m_id_symbol.size());
-        m_var_ids_in_segment_for_files_with_timestamps.resize(m_id_symbol.size());
-        m_var_ids_for_file_with_unassigned_segment.resize(m_id_symbol.size());
+        m_var_ids.resize(id_symbol.size());
+        m_var_ids_in_segment_for_files_with_timestamps.resize(id_symbol.size());
+        m_var_ids_for_file_with_unassigned_segment.resize(id_symbol.size());
 
         #if FLUSH_TO_DISK_ENABLED
             // fsync archive directory now that everything in the archive directory has been created
@@ -314,8 +315,10 @@ namespace streaming_archive::writer {
         }
     }
     
-    void Archive::write_msg_using_schema (compressor_frontend::Token* uncompressed_msg, uint32_t uncompressed_msg_pos, const bool has_delimiter,
-                                          const bool has_timestamp) {
+    void Archive::write_msg_using_schema (compressor_frontend::Token* uncompressed_msg,
+                                          uint32_t uncompressed_msg_pos, const bool has_delimiter,
+                                          const bool has_timestamp,
+                                          std::map<uint32_t, std::string> id_symbol) {
         epochtime_t timestamp = 0;
         TimestampPattern* timestamp_pattern = nullptr;
         if (has_timestamp) {
@@ -331,7 +334,8 @@ namespace streaming_archive::writer {
         }
         /// TODO: fix for multi-level dict
         if (get_data_size_of_dictionaries(0) >= m_target_data_size_of_dicts) {
-            clp::split_file_and_archive(m_archive_user_config, m_path_for_compression, m_group_id, timestamp_pattern, *this);
+            clp::split_file_and_archive(m_archive_user_config, m_path_for_compression, m_group_id,
+                                        timestamp_pattern, *this, id_symbol);
         } else if (m_file->get_encoded_size_in_bytes() >= m_target_encoded_file_size) {
             clp::split_file(m_path_for_compression, m_group_id, timestamp_pattern, *this);
         }

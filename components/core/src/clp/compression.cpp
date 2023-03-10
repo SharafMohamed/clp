@@ -103,13 +103,13 @@ namespace clp {
             archive_writer.m_schema_file_path = command_line_args.get_schema_file_path();
         }
         // Open archive
+        std::map<uint32_t, std::string> id_symbol;
         if(use_heuristic) {
-            std::map<uint32_t, std::string> m_id_symbol;
-            m_id_symbol[0] = "heuristic";
-            archive_writer.open(archive_user_config, m_id_symbol);
+            id_symbol[0] = "heuristic";
         } else {
-            archive_writer.open(archive_user_config, log_parser->m_lexer.m_id_symbol);
+            id_symbol = log_parser->m_lexer.m_id_symbol;
         }
+        archive_writer.open(archive_user_config, id_symbol);
 
         archive_writer.add_empty_directories(empty_directory_paths);
 
@@ -127,7 +127,7 @@ namespace clp {
         for (auto rit = files_to_compress.crbegin(); rit != files_to_compress.crend(); ++rit) {
             /// TODO: fix this to multi-level dict
             if (archive_writer.get_data_size_of_dictionaries(0) >= target_data_size_of_dictionaries) {
-                split_archive(archive_user_config, archive_writer);
+                split_archive(archive_user_config, archive_writer, id_symbol);
             }
             if (false == file_compressor.compress_file(target_data_size_of_dictionaries, archive_user_config,
                                                        target_encoded_file_size, *rit, archive_writer, use_heuristic)) {
@@ -143,9 +143,8 @@ namespace clp {
         sort(grouped_files_to_compress.begin(), grouped_files_to_compress.end(), file_group_id_comparator);
         // Compress grouped files
         for (const auto& file_to_compress: grouped_files_to_compress) {
-            /// TODO: fix this to multi-level dict
             if (archive_writer.get_data_size_of_dictionaries(0) >= target_data_size_of_dictionaries) {
-                split_archive(archive_user_config, archive_writer);
+                split_archive(archive_user_config, archive_writer, id_symbol);
             }
             if (false == file_compressor.compress_file(target_data_size_of_dictionaries, archive_user_config,
                                                        target_encoded_file_size, file_to_compress,

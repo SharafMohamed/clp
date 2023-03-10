@@ -114,7 +114,7 @@ namespace clp {
                                                 file_to_compress.get_path_for_compression(),
                                                 file_to_compress.get_group_id(), archive_writer, m_file_reader);
             } else {
-                SPDLOG_WARN("Compressing {}", file_name);
+                SPDLOG_INFO("Compressing {}", file_name);
                 parse_and_encode_with_library (target_data_size_of_dicts, archive_user_config, target_encoded_file_size,
                                      file_to_compress.get_path_for_compression(),
                                      file_to_compress.get_group_id(), archive_writer, m_file_reader);
@@ -215,9 +215,8 @@ namespace clp {
                     case (LogParser::ParsingAction::Compress) : {
                         archive_writer.write_msg_using_schema(
                                 output_buffer.storage().get_mutable_active_buffer(),
-                                output_buffer.storage().pos(),
-                                output_buffer.has_delimiters(),
-                                output_buffer.has_timestamp());
+                                output_buffer.storage().pos(), output_buffer.has_delimiters(),
+                                output_buffer.has_timestamp(), m_log_parser->m_lexer.m_id_symbol);
                         input_buffer.try_read(reader);
                         if(output_buffer.has_timestamp()) {
                             output_buffer.set_pos(0);
@@ -230,7 +229,7 @@ namespace clp {
                         archive_writer.write_msg_using_schema(
                                 output_buffer.storage().get_mutable_active_buffer(),
                                 output_buffer.storage().pos(), output_buffer.has_delimiters(),
-                                output_buffer.has_timestamp());
+                                output_buffer.has_timestamp(), m_log_parser->m_lexer.m_id_symbol);
                         break;
                     }
                     default : {
@@ -292,13 +291,15 @@ namespace clp {
                         log_view.m_log_output_buffer.storage().get_mutable_active_buffer(),
                         log_view.m_log_output_buffer.storage().pos(),
                         log_view.m_log_output_buffer.has_delimiters(),
-                        log_view.m_log_output_buffer.has_timestamp());
+                        log_view.m_log_output_buffer.has_timestamp(),
+                        m_log_parser->m_lexer.m_id_symbol);
             } else {
                 archive_writer.write_msg_using_schema(
                         log_view.m_log_output_buffer.storage().get_mutable_active_buffer(),
                         log_view.m_log_output_buffer.storage().pos(),
                         log_view.m_log_output_buffer.has_delimiters(),
-                        log_view.m_log_output_buffer.has_timestamp());
+                        log_view.m_log_output_buffer.has_timestamp(),
+                        m_log_parser->m_lexer.m_id_symbol);
             }
         }
         close_file_and_append_to_segment(archive_writer);
@@ -317,9 +318,12 @@ namespace clp {
 
         // Parse content from UTF-8 validation buffer
         size_t buf_pos = 0;
+        std::map<uint32_t, std::string> id_symbol;
+        id_symbol[0] = "heuristic";
         while (m_message_parser.parse_next_message(false, m_utf8_validation_buf_length, m_utf8_validation_buf, buf_pos, m_parsed_message)) {
             if (archive_writer.get_data_size_of_dictionaries(0) >= target_data_size_of_dicts) {
-                split_file_and_archive(archive_user_config, path_for_compression, group_id, m_parsed_message.get_ts_patt(), archive_writer);
+                split_file_and_archive(archive_user_config, path_for_compression, group_id,
+                                       m_parsed_message.get_ts_patt(), archive_writer, id_symbol);
             } else if (archive_writer.get_file().get_encoded_size_in_bytes() >= target_encoded_file_size) {
                 split_file(path_for_compression, group_id, m_parsed_message.get_ts_patt(), archive_writer);
             }
@@ -330,7 +334,8 @@ namespace clp {
         // Parse remaining content from file
         while (m_message_parser.parse_next_message(true, reader, m_parsed_message)) {
             if (archive_writer.get_data_size_of_dictionaries(0) >= target_data_size_of_dicts) {
-                split_file_and_archive(archive_user_config, path_for_compression, group_id, m_parsed_message.get_ts_patt(), archive_writer);
+                split_file_and_archive(archive_user_config, path_for_compression, group_id,
+                                       m_parsed_message.get_ts_patt(), archive_writer, id_symbol);
             } else if (archive_writer.get_file().get_encoded_size_in_bytes() >= target_encoded_file_size) {
                 split_file(path_for_compression, group_id, m_parsed_message.get_ts_patt(), archive_writer);
             }
@@ -400,9 +405,14 @@ namespace clp {
                 parent_directories.emplace(file_parent_path);
             }
 
-            /// TODO: this check needs to be extended to multi-level dictionary
+            std::map<uint32_t, std::string> id_symbol;
+            if(use_heuristic) {
+                id_symbol[0] = "heuristic";
+            } else {
+                id_symbol = m_log_parser->m_lexer.m_id_symbol;
+            }
             if (archive_writer.get_data_size_of_dictionaries(0) >= target_data_size_of_dicts) {
-                split_archive(archive_user_config, archive_writer);
+                split_archive(archive_user_config, archive_writer, id_symbol);
             }
 
             m_libarchive_reader.open_file_reader(m_libarchive_file_reader);

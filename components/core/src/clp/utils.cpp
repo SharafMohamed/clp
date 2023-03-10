@@ -185,12 +185,13 @@ namespace clp {
         archive_writer.append_file_to_segment();
     }
 
-    void split_archive (streaming_archive::writer::Archive::UserConfig& archive_user_config, streaming_archive::writer::Archive& archive_writer) {
+    void split_archive (streaming_archive::writer::Archive::UserConfig& archive_user_config,
+                        streaming_archive::writer::Archive& archive_writer,
+                        std::map<uint32_t, std::string>& id_symbol) {
         archive_writer.close();
         archive_user_config.id = boost::uuids::random_generator()();
         ++archive_user_config.creation_num;
-        /// TODO: fix this to use m_symbol_id
-        exit(1); // archive_writer.open(archive_user_config);
+        archive_writer.open(archive_user_config, id_symbol);
 
     }
 
@@ -208,16 +209,21 @@ namespace clp {
         archive_writer.change_ts_pattern(last_timestamp_pattern);
     }
 
-    void split_file_and_archive (streaming_archive::writer::Archive::UserConfig& archive_user_config, const string& path_for_compression, group_id_t group_id,
-                                 const TimestampPattern* last_timestamp_pattern, streaming_archive::writer::Archive& archive_writer)
+    void split_file_and_archive (streaming_archive::writer::Archive::UserConfig&
+                                 archive_user_config, const string& path_for_compression,
+                                 group_id_t group_id,
+                                 const TimestampPattern* last_timestamp_pattern,
+                                 streaming_archive::writer::Archive& archive_writer,
+                                 std::map<uint32_t, std::string>& id_symbol)
     {
+        SPDLOG_INFO("Splitting file and archiving");
         const auto& encoded_file = archive_writer.get_file();
         auto orig_file_id = encoded_file.get_orig_file_id();
         auto split_ix = encoded_file.get_split_ix();
         archive_writer.set_file_is_split(true);
         close_file_and_append_to_segment(archive_writer);
 
-        split_archive(archive_user_config, archive_writer);
+        split_archive(archive_user_config, archive_writer, id_symbol);
 
         archive_writer.create_and_open_file(path_for_compression, group_id, orig_file_id, ++split_ix);
         // Initialize the file's timestamp pattern to the previous split's pattern

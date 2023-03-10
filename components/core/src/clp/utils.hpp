@@ -70,7 +70,9 @@ namespace clp {
      * @param archive_user_config
      * @param archive_writer
      */
-    void split_archive (streaming_archive::writer::Archive::UserConfig& archive_user_config, streaming_archive::writer::Archive& archive_writer);
+    void split_archive (streaming_archive::writer::Archive::UserConfig& archive_user_config,
+                        streaming_archive::writer::Archive& archive_writer,
+                        std::map<uint32_t, std::string>& id_symbol);
 
     /**
      * Closes the current encoded file in the archive and starts a new one
@@ -90,8 +92,12 @@ namespace clp {
      * @param last_timestamp_pattern
      * @param archive_writer
      */
-    void split_file_and_archive (streaming_archive::writer::Archive::UserConfig& archive_user_config, const std::string& path_for_compression,
-                                 group_id_t group_id, const TimestampPattern* last_timestamp_pattern, streaming_archive::writer::Archive& archive_writer);
+    void split_file_and_archive (streaming_archive::writer::Archive::UserConfig&
+                                 archive_user_config, const std::string& path_for_compression,
+                                 group_id_t group_id,
+                                 const TimestampPattern* last_timestamp_pattern,
+                                 streaming_archive::writer::Archive& archive_writer,
+                                 std::map<uint32_t, std::string>& id_symbol);
 }
 
 #endif // CLP_UTILS_HPP
