@@ -93,18 +93,17 @@ namespace compressor_frontend::library {
      */
     class ReaderParser {
     public:
-        ReaderParser (Schema& schema, Reader& reader);
-
+        explicit ReaderParser (Schema& schema);
+        void set_reader_and_read(Reader& reader);
 
         /**
          * Construct statically to more cleanly report errors building the parser
          * from the given schema. Can construct from from a file, or a Schema
          * object.
          */
-        static ReaderParser
-        reader_parser_from_file (std::string& schema_file_name, Reader& reader);
+        static ReaderParser reader_parser_from_file (std::string& schema_file_name);
 
-        static ReaderParser reader_parser_from_schema (Schema& schema, Reader& r);
+        static ReaderParser reader_parser_from_schema (Schema& schema);
 
         /**
          * Attempts to parse the next log from the source it was created with.
@@ -210,6 +209,12 @@ namespace compressor_frontend::library {
          * @return A Log object made from this LogView.
          */
         Log deepCopy ();
+
+        void reset () {
+            m_log_output_buffer.reset();
+            m_multiline = false;
+            m_log_var_occurrences.clear();
+        }
 
         /**
          * @param var_id The occurrence of the variable in the log starting at 0.

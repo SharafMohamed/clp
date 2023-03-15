@@ -34,6 +34,7 @@ namespace streaming_archive { namespace reader {
     }
 
     void Archive::open (const string& path, std::map<uint32_t, std::string>& id_symbol) {
+        SPDLOG_INFO("Decompressing {}", path);
         // Determine whether path is file or directory
         struct stat path_stat = {};
         const char* path_c_str = path.c_str();
