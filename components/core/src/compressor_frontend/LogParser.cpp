@@ -146,7 +146,9 @@ namespace compressor_frontend {
             output_buffer.set_pos(1);
             return true;
         }
-        if (next_token.m_type_ids_ptr->at(0) == (int) SymbolID::TokenFirstTimestampId) {
+        if (next_token.m_type_ids_ptr->at(0) == (int) SymbolID::TokenFirstTimestampId ||
+            next_token.m_type_ids_ptr->at(0) == (int) SymbolID::TokenNewlineTimestampId)
+        {
             output_buffer.set_has_timestamp(true);
             output_buffer.set_token(0, next_token);
             output_buffer.set_pos(1);
