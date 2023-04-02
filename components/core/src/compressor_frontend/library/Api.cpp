@@ -103,6 +103,7 @@ namespace compressor_frontend::library {
                             m_log_parser.flip_lexer_states(old_storage_size);
                         }
                     } else {
+                        SPDLOG_WARN("init failed");
                         throw (err);
                     }
                     init_successful = false;
@@ -128,6 +129,7 @@ namespace compressor_frontend::library {
                                 m_log_parser.flip_lexer_states(old_storage_size);
                             }
                         } else {
+                            SPDLOG_WARN("parsing failed");
                             throw (err);
                         }
                         parse_successful = false;
@@ -135,6 +137,7 @@ namespace compressor_frontend::library {
                 }
             }
         } catch (std::runtime_error const& err) {
+            SPDLOG_WARN("get_next_log_view failed");
             return -1;
         }
 

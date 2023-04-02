@@ -213,13 +213,17 @@ namespace streaming_archive::writer {
             close_segment_and_persist_file_metadata(m_segment_for_files_with_timestamps, m_files_with_timestamps_in_segment,
                                                     m_logtype_ids_in_segment_for_files_with_timestamps, m_var_ids_in_segment_for_files_with_timestamps);
             m_logtype_ids_in_segment_for_files_with_timestamps.clear();
-            m_var_ids_in_segment_for_files_with_timestamps.clear();
+            for (auto& var_ids_in_seg : m_var_ids_in_segment_for_files_with_timestamps) {
+                var_ids_in_seg.clear();
+            }
         }
         if (m_segment_for_files_without_timestamps.is_open()) {
             close_segment_and_persist_file_metadata(m_segment_for_files_without_timestamps, m_files_without_timestamps_in_segment,
                                                     m_logtype_ids_in_segment_for_files_without_timestamps, m_var_ids_in_segment_for_files_without_timestamps);
             m_logtype_ids_in_segment_for_files_without_timestamps.clear();
-            m_var_ids_in_segment_for_files_without_timestamps.clear();
+            for (auto& var_ids_in_seg : m_var_ids_in_segment_for_files_without_timestamps) {
+                var_ids_in_seg.clear();
+            }
         }
 
         // Persist all metadata including dictionaries
@@ -326,14 +330,21 @@ namespace streaming_archive::writer {
             size_t end;
             timestamp_pattern = (TimestampPattern*) TimestampPattern::search_known_ts_patterns(
                     uncompressed_msg[0].get_string(), timestamp, start, end);
-            if (old_ts_pattern != *timestamp_pattern) {
+            if (m_old_ts_pattern != *timestamp_pattern) {
                 change_ts_pattern(timestamp_pattern);
-                old_ts_pattern = *timestamp_pattern;
+                m_old_ts_pattern = *timestamp_pattern;
+                m_timestamp_set = true;
             }
             assert(nullptr != timestamp_pattern);
+        } else {
+            if (false == m_timestamp_set || false == m_old_ts_pattern.get_format().empty()) {
+                change_ts_pattern(nullptr);
+                m_old_ts_pattern.clear();
+                m_timestamp_set = true;
+            }
         }
         /// TODO: fix for multi-level dict
-        if (get_data_size_of_dictionaries(0) >= m_target_data_size_of_dicts) {
+        if (get_data_size_of_dictionaries() >= m_target_data_size_of_dicts) {
             clp::split_file_and_archive(m_archive_user_config, m_path_for_compression, m_group_id,
                                         timestamp_pattern, *this, id_symbol);
         } else if (m_file->get_encoded_size_in_bytes() >= m_target_encoded_file_size) {
@@ -479,7 +490,9 @@ namespace streaming_archive::writer {
         if (segment.get_uncompressed_size() >= m_target_segment_uncompressed_size) {
             close_segment_and_persist_file_metadata(segment, files_in_segment, logtype_ids_in_segment, var_ids_in_segment);
             logtype_ids_in_segment.clear();
-            var_ids_in_segment.clear();
+            for(uint32_t i = 0; i < var_ids_in_segment.size(); i++) {
+                var_ids_in_segment[i].clear();
+            }
         }
     }
 

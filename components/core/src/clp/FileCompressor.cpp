@@ -119,6 +119,7 @@ namespace clp {
                 parse_and_encode_with_library(target_data_size_of_dicts, archive_user_config, target_encoded_file_size,
                                      file_to_compress.get_path_for_compression(),
                                      file_to_compress.get_group_id(), archive_writer, m_file_reader);
+                SPDLOG_INFO("Compressed {}", file_name);
             }
         } else {
             if (false == try_compressing_as_archive(target_data_size_of_dicts, archive_user_config, target_encoded_file_size, file_to_compress,
@@ -151,7 +152,8 @@ namespace clp {
         /// TODO:Add the  m_utf8_validation_buf into the start of the input buffer
         reader.seek_from_begin(0);
         m_log_parser->set_archive_writer_ptr(&archive_writer);
-        m_log_parser->get_archive_writer_ptr()->old_ts_pattern.clear();
+        m_log_parser->get_archive_writer_ptr()->m_old_ts_pattern.clear();
+        m_log_parser->get_archive_writer_ptr()->m_timestamp_set = false;
         try {
             // Create buffers statically
             /// TODO: create this and pass them in like m_log_parser to avoid re-initializing each time
@@ -182,9 +184,6 @@ namespace clp {
                     }
                     init_successful = false;
                 }
-            }
-            if (output_buffer.has_timestamp() == false) {
-                archive_writer.change_ts_pattern(nullptr);
             }
             LogParser::ParsingAction parsing_action = LogParser::ParsingAction::None;
             while (!done && parsing_action != LogParser::ParsingAction::CompressAndFinish) {
@@ -276,7 +275,8 @@ namespace clp {
         archive_writer.create_and_open_file(path_for_compression, group_id, m_uuid_generator(), 0);
         /// TODO:Add the m_utf8_validation_buf into the start of the input buffer
         reader.seek_from_begin(0);
-        archive_writer.old_ts_pattern.clear();
+        archive_writer.m_old_ts_pattern.clear();
+        archive_writer.m_timestamp_set = false;
         Reader reader_wrapper {
                 [&] (char *buf, size_t count, size_t& read_to) -> bool {
                     return reader.read(buf, count, read_to);
@@ -288,18 +288,15 @@ namespace clp {
         reader_parser.set_reader_and_read(reader_wrapper);
         LogView log_view(reader_parser.get_log_parser());
         compressor_frontend::parse_stopwatch.stop();
-
         while (false == reader_parser.done()) {
             compressor_frontend::parse_stopwatch.start();
             int error_code = reader_parser.get_next_log_view(log_view);
             compressor_frontend::parse_stopwatch.stop();
-            compressor_frontend::compression_stopwatch.start();
             if (0 != error_code) {
+                SPDLOG_ERROR("Parsing Failed");
                 throw(std::runtime_error("Parsing Failed"));
             }
-            if (log_view.m_log_output_buffer.has_timestamp() == false) {
-                archive_writer.change_ts_pattern(nullptr);
-            }
+            compressor_frontend::compression_stopwatch.start();
             if (false == reader_parser.done()) {
                 archive_writer.write_msg_using_schema(
                         log_view.m_log_output_buffer.storage().get_mutable_active_buffer(),
@@ -338,7 +335,7 @@ namespace clp {
         std::map<uint32_t, std::string> id_symbol;
         id_symbol[0] = "heuristic";
         while (m_message_parser.parse_next_message(false, m_utf8_validation_buf_length, m_utf8_validation_buf, buf_pos, m_parsed_message)) {
-            if (archive_writer.get_data_size_of_dictionaries(0) >= target_data_size_of_dicts) {
+            if (archive_writer.get_data_size_of_dictionaries() >= target_data_size_of_dicts) {
                 split_file_and_archive(archive_user_config, path_for_compression, group_id,
                                        m_parsed_message.get_ts_patt(), archive_writer, id_symbol);
             } else if (archive_writer.get_file().get_encoded_size_in_bytes() >= target_encoded_file_size) {
@@ -350,7 +347,7 @@ namespace clp {
 
         // Parse remaining content from file
         while (m_message_parser.parse_next_message(true, reader, m_parsed_message)) {
-            if (archive_writer.get_data_size_of_dictionaries(0) >= target_data_size_of_dicts) {
+            if (archive_writer.get_data_size_of_dictionaries() >= target_data_size_of_dicts) {
                 split_file_and_archive(archive_user_config, path_for_compression, group_id,
                                        m_parsed_message.get_ts_patt(), archive_writer, id_symbol);
             } else if (archive_writer.get_file().get_encoded_size_in_bytes() >= target_encoded_file_size) {
@@ -428,7 +425,7 @@ namespace clp {
             } else {
                 id_symbol = m_log_parser->m_lexer.m_id_symbol;
             }
-            if (archive_writer.get_data_size_of_dictionaries(0) >= target_data_size_of_dicts) {
+            if (archive_writer.get_data_size_of_dictionaries() >= target_data_size_of_dicts) {
                 split_archive(archive_user_config, archive_writer, id_symbol);
             }
 

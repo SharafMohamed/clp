@@ -60,8 +60,8 @@ namespace streaming_archive { namespace writer {
             }
         };
 
-        TimestampPattern old_ts_pattern;
-
+        TimestampPattern m_old_ts_pattern;
+        bool m_timestamp_set;
         size_t m_target_data_size_of_dicts;
         UserConfig m_archive_user_config;
         std::string m_path_for_compression;
@@ -70,7 +70,7 @@ namespace streaming_archive { namespace writer {
         std::string m_schema_file_path;
 
         // Constructors
-        Archive () : m_logs_dir_fd(-1), m_segments_dir_fd(-1), m_compression_level(0), m_global_metadata_db(nullptr), old_ts_pattern(), m_schema_file_path() {}
+        Archive () : m_logs_dir_fd(-1), m_segments_dir_fd(-1), m_compression_level(0), m_global_metadata_db(nullptr), m_old_ts_pattern(), m_timestamp_set(false), m_schema_file_path() {}
 
         // Destructor
         ~Archive ();
@@ -167,7 +167,13 @@ namespace streaming_archive { namespace writer {
         const boost::uuids::uuid& get_id () const { return m_id; }
         const std::string& get_id_as_string () const { return m_id_as_string; }
 
-        size_t get_data_size_of_dictionaries (int var_id) const { return m_logtype_dict.get_data_size() + m_var_dict_ptrs[var_id]->get_data_size(); }
+        size_t get_data_size_of_dictionaries () const {
+            size_t total_var_size = m_logtype_dict.get_data_size();
+            for (auto var_dict_ptr : m_var_dict_ptrs) {
+                total_var_size += var_dict_ptr->get_data_size();
+            }
+            return total_var_size;
+        }
 
     private:
         // Types

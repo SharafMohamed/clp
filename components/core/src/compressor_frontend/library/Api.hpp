@@ -211,9 +211,11 @@ namespace compressor_frontend::library {
         Log deepCopy ();
 
         void reset () {
+            for (std::vector<const Token*>& log_var_occ: m_log_var_occurrences) {
+                log_var_occ.clear();
+            }
             m_log_output_buffer.reset();
             m_multiline = false;
-            m_log_var_occurrences.clear();
         }
 
         /**

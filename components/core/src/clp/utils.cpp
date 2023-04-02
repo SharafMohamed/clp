@@ -216,7 +216,6 @@ namespace clp {
                                  streaming_archive::writer::Archive& archive_writer,
                                  std::map<uint32_t, std::string>& id_symbol)
     {
-        SPDLOG_INFO("Splitting file and archiving");
         const auto& encoded_file = archive_writer.get_file();
         auto orig_file_id = encoded_file.get_orig_file_id();
         auto split_ix = encoded_file.get_split_ix();

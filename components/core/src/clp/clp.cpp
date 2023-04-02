@@ -12,4 +12,5 @@ int main (int argc, const char* argv[]) {
         SPDLOG_ERROR(err.c_str());
         return 1;
     }
+    return 0;
 }
