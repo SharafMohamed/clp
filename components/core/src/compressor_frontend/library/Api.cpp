@@ -23,13 +23,10 @@ namespace compressor_frontend::library {
         log_view.m_log_output_buffer.reset();
         m_log_input_buffer.set_storage(buf, size, read_to, finished_reading_input);
         try {
-            m_done = m_log_parser.init(m_log_input_buffer, log_view.m_log_output_buffer);
-            if (false == m_done) {
-                auto result = m_log_parser.parse_new(m_log_input_buffer,
-                                                     log_view.m_log_output_buffer);
-                if (LogParser::ParsingAction::CompressAndFinish == result) {
-                    m_done = true;
-                }
+            auto result = m_log_parser.parse(m_log_input_buffer,
+                                                 log_view.m_log_output_buffer);
+            if (LogParser::ParsingAction::CompressAndFinish == result) {
+                m_done = true;
             }
         } catch (std::runtime_error const& err) {
             return -1;
@@ -88,56 +85,32 @@ namespace compressor_frontend::library {
     int ReaderParser::get_next_log_view (LogView& log_view) {
         log_view.reset();
         m_log_input_buffer.try_read(m_reader);
-        bool init_successful = false;
         try {
-            while (init_successful == false) {
+            bool parse_successful = false;
+            while (parse_successful == false) {
                 try {
-                    m_done = m_log_parser.init(m_log_input_buffer, log_view.m_log_output_buffer);
-                    init_successful = true;
+                    auto result = m_log_parser.parse(m_log_input_buffer,
+                                                         log_view.m_log_output_buffer);
+                    if (LogParser::ParsingAction::CompressAndFinish == result) {
+                        m_done = true;
+                    }
+                    parse_successful = true;
                 } catch (std::runtime_error const& err) {
                     if (string(err.what()) == "Input buffer about to overflow") {
                         uint32_t old_storage_size;
-                        bool flipped_static_buffer = m_log_input_buffer.increase_capacity_and_read(
-                                m_reader, old_storage_size);
+                        bool flipped_static_buffer =
+                                m_log_input_buffer.increase_capacity_and_read(m_reader,
+                                                                              old_storage_size);
                         if (flipped_static_buffer) {
                             m_log_parser.flip_lexer_states(old_storage_size);
                         }
                     } else {
-                        SPDLOG_WARN("init failed");
                         throw (err);
                     }
-                    init_successful = false;
-                }
-            }
-            if (false == m_done) {
-                bool parse_successful = false;
-                while (parse_successful == false) {
-                    try {
-                        auto result = m_log_parser.parse_new(m_log_input_buffer,
-                                                             log_view.m_log_output_buffer);
-                        if (LogParser::ParsingAction::CompressAndFinish == result) {
-                            m_done = true;
-                        }
-                        parse_successful = true;
-                    } catch (std::runtime_error const& err) {
-                        if (string(err.what()) == "Input buffer about to overflow") {
-                            uint32_t old_storage_size;
-                            bool flipped_static_buffer =
-                                    m_log_input_buffer.increase_capacity_and_read(m_reader,
-                                                                                 old_storage_size);
-                            if (flipped_static_buffer) {
-                                m_log_parser.flip_lexer_states(old_storage_size);
-                            }
-                        } else {
-                            SPDLOG_WARN("parsing failed");
-                            throw (err);
-                        }
-                        parse_successful = false;
-                    }
+                    parse_successful = false;
                 }
             }
         } catch (std::runtime_error const& err) {
-            SPDLOG_WARN("get_next_log_view failed");
             return -1;
         }
 

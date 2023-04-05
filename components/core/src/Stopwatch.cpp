@@ -5,6 +5,7 @@ Stopwatch::Stopwatch () {
 }
 
 void Stopwatch::start () {
+    m_num_starts++;
     m_begin = std::chrono::steady_clock::now();
 }
 
@@ -16,10 +17,15 @@ void Stopwatch::stop () {
 }
 
 void Stopwatch::reset () {
+    m_num_starts = 0;
     m_time_taken = std::chrono::steady_clock::duration::zero();
 }
 
 double Stopwatch::get_time_taken_in_seconds () {
     std::chrono::duration<double> time_taken_in_seconds = m_time_taken;
     return time_taken_in_seconds.count();
+}
+
+uint64_t Stopwatch::get_num_starts () {
+    return m_num_starts;
 }

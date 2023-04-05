@@ -71,6 +71,10 @@ namespace compressor_frontend {
             m_storage.set_pos(pos);
         }
 
+        [[nodiscard]] uint32_t pos () const {
+            return m_storage.pos();
+        }
+
         [[nodiscard]] Buffer<Token>& storage () {
             return m_storage;
         }

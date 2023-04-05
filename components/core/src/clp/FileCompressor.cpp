@@ -18,6 +18,7 @@
 #include "../Profiler.hpp"
 #include "utils.hpp"
 
+extern Stopwatch read_stopwatch;
 extern Stopwatch parse_stopwatch;
 extern Stopwatch compression_stopwatch;
 extern uint32_t number_of_log_messages;
@@ -165,42 +166,25 @@ namespace clp {
 
             // Initialize parser and lexer
             m_log_parser->reset();
-            bool init_successful = false;
-            bool done;
-            while (init_successful == false) {
-                try {
-                    done = m_log_parser->init(input_buffer, output_buffer);
-                    init_successful = true;
-                } catch (std::runtime_error const& err) {
-                    if (string(err.what()) == "Input buffer about to overflow") {
-                        uint32_t old_storage_size;
-                        bool flipped_static_buffer = input_buffer.increase_capacity_and_read(
-                                reader, old_storage_size);
-                        if (flipped_static_buffer) {
-                            m_log_parser->flip_lexer_states(old_storage_size);
-                        }
-                    } else {
-                       throw (err);
-                    }
-                    init_successful = false;
-                }
-            }
             LogParser::ParsingAction parsing_action = LogParser::ParsingAction::None;
+            bool done = false;
             while (!done && parsing_action != LogParser::ParsingAction::CompressAndFinish) {
                 // Parse until reading is needed
                 bool parse_successful = false;
                 while (parse_successful == false) {
                     try {
                         compressor_frontend::parse_stopwatch.start();
-                        parsing_action = m_log_parser->parse_new(input_buffer, output_buffer);
+                        parsing_action = m_log_parser->parse(input_buffer, output_buffer);
                         compressor_frontend::parse_stopwatch.stop();
                         parse_successful = true;
                     } catch (std::runtime_error const& err) {
                         compressor_frontend::parse_stopwatch.stop();
                         if (string(err.what()) == "Input buffer about to overflow") {
                             uint32_t old_storage_size;
+                            compressor_frontend::read_stopwatch.start();
                             bool flipped_static_buffer = input_buffer.increase_capacity_and_read(
                                     reader, old_storage_size);
+                            compressor_frontend::read_stopwatch.stop();
                             if(flipped_static_buffer) {
                                 m_log_parser->flip_lexer_states(old_storage_size);
                             }
@@ -219,7 +203,9 @@ namespace clp {
                                 output_buffer.storage().get_mutable_active_buffer(),
                                 output_buffer.storage().pos(), output_buffer.has_delimiters(),
                                 output_buffer.has_timestamp(), m_log_parser->m_lexer.m_id_symbol);
+                        compressor_frontend::read_stopwatch.start();
                         input_buffer.try_read(reader);
+                        compressor_frontend::read_stopwatch.stop();
                         if(output_buffer.has_timestamp()) {
                             output_buffer.set_pos(0);
                         } else {

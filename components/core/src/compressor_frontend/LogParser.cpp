@@ -25,7 +25,7 @@ using std::unique_ptr;
 using std::vector;
 
 namespace compressor_frontend {
-    LogParser::LogParser (const string& schema_file_path) : m_initialized (false),
+    LogParser::LogParser (const string& schema_file_path) :
             m_has_start_of_log_message(false) {
         std::unique_ptr<compressor_frontend::SchemaFileAST> schema_ast =
                 compressor_frontend::SchemaParser::try_schema_file(schema_file_path);
@@ -36,7 +36,7 @@ namespace compressor_frontend {
     }
 
     LogParser::LogParser (const compressor_frontend::SchemaFileAST* schema_file_ast_ptr) :
-            m_initialized(false), m_has_start_of_log_message(false) {
+            m_has_start_of_log_message(false) {
         add_delimiters(schema_file_ast_ptr->m_delimiters);
         add_rules(schema_file_ast_ptr);
         m_lexer.generate();
@@ -130,61 +130,35 @@ namespace compressor_frontend {
 
     /// TODO: if the first text is a variable in the no timestamp case you lose the first variable
     /// to static text since it has no leading delim
-    bool LogParser::init (LogInputBuffer& input_buffer, LogOutputBuffer& output_buffer) {
-        output_buffer.set_has_delimiters(m_lexer.get_has_delimiters());
-        Token next_token;
-        if (m_has_start_of_log_message) {
-            next_token = m_start_of_log_message;
-        } else {
-            next_token = get_next_symbol_new(input_buffer);
-        }
-        // make sure initialized is set only after getting next_token, as this call can fail if
-        // the input_buffer does not fit a single token (extremely unlikely edge-case)
-        m_initialized = true;
-        if (next_token.m_type_ids_ptr->at(0) == (int) SymbolID::TokenEndID) {
-            output_buffer.set_token(0, next_token);
-            output_buffer.set_pos(1);
-            return true;
-        }
-        if (next_token.m_type_ids_ptr->at(0) == (int) SymbolID::TokenFirstTimestampId ||
-            next_token.m_type_ids_ptr->at(0) == (int) SymbolID::TokenNewlineTimestampId)
-        {
-            output_buffer.set_has_timestamp(true);
-            output_buffer.set_token(0, next_token);
-            output_buffer.set_pos(1);
-        } else {
-            output_buffer.set_has_timestamp(false);
-            output_buffer.set_token(1, next_token);
-            output_buffer.set_pos(2);
-        }
-        m_has_start_of_log_message = false;
-        return false;
-    }
-
-    LogParser::ParsingAction LogParser::parse_new (LogInputBuffer& input_buffer,
+    /// TODO: switching between timestamped and non-timestamped logs
+    LogParser::ParsingAction LogParser::parse (LogInputBuffer& input_buffer,
                                                    LogOutputBuffer& output_buffer) {
-        output_buffer.set_has_delimiters(m_lexer.get_has_delimiters());
-
-        if (m_has_start_of_log_message) {
-            // switch to timestamped messages if a timestamp is ever found at the start of line
-            // (potentially dangerous as it never switches back)
-            /// TODO: potentially switch back if a new line is reached and the message is too long
-            /// (100x static message size)
-            if (m_start_of_log_message.m_type_ids_ptr->at(0) ==
-                (int) SymbolID::TokenNewlineTimestampId)
+        if (0 == output_buffer.pos()) {
+            output_buffer.set_has_delimiters(m_lexer.get_has_delimiters());
+            Token next_token;
+            if (m_has_start_of_log_message) {
+                next_token = m_start_of_log_message;
+            } else {
+                next_token = get_next_symbol_new(input_buffer);
+            }
+            if (next_token.m_type_ids_ptr->at(0) == (int) SymbolID::TokenEndID) {
+                output_buffer.set_token(0, next_token);
+                output_buffer.set_pos(1);
+                return ParsingAction::CompressAndFinish;
+            }
+            if (next_token.m_type_ids_ptr->at(0) == (int) SymbolID::TokenFirstTimestampId ||
+                next_token.m_type_ids_ptr->at(0) == (int) SymbolID::TokenNewlineTimestampId)
             {
                 output_buffer.set_has_timestamp(true);
-            }
-            if (output_buffer.has_timestamp()) {
-                output_buffer.set_token(0, m_start_of_log_message);
+                output_buffer.set_token(0, next_token);
                 output_buffer.set_pos(1);
             } else {
-                output_buffer.set_token(1, m_start_of_log_message);
+                output_buffer.set_has_timestamp(false);
+                output_buffer.set_token(1, next_token);
                 output_buffer.set_pos(2);
             }
             m_has_start_of_log_message = false;
         }
-
         while (true) {
             Token next_token = get_next_symbol_new(input_buffer);
             output_buffer.set_curr_token(next_token);

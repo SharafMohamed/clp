@@ -186,6 +186,7 @@ namespace streaming_archive::writer {
         m_var_ids.resize(id_symbol.size());
         m_var_ids_in_segment_for_files_with_timestamps.resize(id_symbol.size());
         m_var_ids_for_file_with_unassigned_segment.resize(id_symbol.size());
+        m_var_ids_in_segment_for_files_without_timestamps.resize(id_symbol.size());
 
         #if FLUSH_TO_DISK_ENABLED
             // fsync archive directory now that everything in the archive directory has been created

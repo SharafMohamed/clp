@@ -39,20 +39,12 @@ namespace compressor_frontend {
         void reset ();
 
         /**
-         * Initialize the parser. Return true if EOF was reached, false otherwise.
-         * @param input_buffer
-         * @param output_buffer
-         * @return bool
-         */
-        bool init (LogInputBuffer& input_buffer, LogOutputBuffer& output_buffer);
-
-        /**
          * /// TODO: this description will need to change after adding it directly into the dictionary writer
          * Custom parsing for the log that builds up an uncompressed message and then compresses it all at once
          * @param buffer
          * @return int
          */
-        ParsingAction parse_new (LogInputBuffer& input_buffer, LogOutputBuffer& output_buffer);
+        ParsingAction parse (LogInputBuffer& input_buffer, LogOutputBuffer& output_buffer);
 
         void flip_lexer_states(uint32_t old_storage_size) {
             m_lexer.flip_states(old_storage_size);
@@ -60,10 +52,6 @@ namespace compressor_frontend {
 
         std::string get_id_symbol(int id) {
             return m_lexer.m_id_symbol[id];
-        }
-
-        [[nodiscard]] bool initialized () const {
-            return m_initialized;
         }
 
         std::string m_schema_file_path;
@@ -92,8 +80,6 @@ namespace compressor_frontend {
 
         bool m_has_start_of_log_message;
         Token m_start_of_log_message;
-        bool m_initialized;
-
     };
 }
 

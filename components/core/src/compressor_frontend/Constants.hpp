@@ -43,6 +43,7 @@ namespace compressor_frontend {
         static const unsigned char cCharEOF = 0xFF;
     };
 
+    extern Stopwatch read_stopwatch;
     extern Stopwatch parse_stopwatch;
     extern Stopwatch compression_stopwatch;
     extern uint32_t number_of_log_messages;
