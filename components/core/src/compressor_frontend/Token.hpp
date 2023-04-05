@@ -26,6 +26,13 @@ namespace compressor_frontend {
                m_type_ids_ptr(nullptr) {} //, m_type_ids_set(std::move(type_ids_set)) {}
 
         /**
+         * Returns the token string_view of the string in the input buffer that the token represents
+         * If the token wraps around the buffer, stores a contiguous string in the Token
+         * @return std::string
+         */
+        std::string_view get_string_view ();
+
+        /**
          * Return the token string (string in the input buffer that the token represents)
          * @return std::string
          */
@@ -51,6 +58,7 @@ namespace compressor_frontend {
          */
         [[nodiscard]] uint32_t get_length () const;
 
+        std::string m_wrap_around_string;
         uint32_t m_start_pos;
         uint32_t m_end_pos;
         const char* m_buffer;
