@@ -8,8 +8,9 @@ namespace compressor_frontend {
         if (m_start_pos <= m_end_pos) {
             return {m_buffer + m_start_pos, m_end_pos - m_start_pos};
         } else {
-            std::copy(m_buffer + m_start_pos, m_buffer + m_buffer_size, std::back_inserter(m_wrap_around_string));
-            std::copy(m_buffer, m_buffer + m_end_pos, std::back_inserter(m_wrap_around_string));
+            m_wrap_around_string = new char[m_buffer_size - m_start_pos + m_end_pos];
+            std::copy(m_buffer + m_start_pos, m_buffer + m_buffer_size, m_wrap_around_string);
+            std::copy(m_buffer, m_buffer + m_end_pos, m_wrap_around_string + m_buffer_size - m_start_pos);
             return {m_wrap_around_string};
         }
     }

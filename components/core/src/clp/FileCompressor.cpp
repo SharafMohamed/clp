@@ -272,7 +272,7 @@ namespace clp {
         static ReaderParser reader_parser = ReaderParser::reader_parser_from_file(
                 m_log_parser->m_schema_file_path);
         reader_parser.set_reader_and_read(reader_wrapper);
-        LogView log_view(reader_parser.get_log_parser());
+        static LogView log_view(reader_parser.get_log_parser());
         compressor_frontend::parse_stopwatch.stop();
         while (false == reader_parser.done()) {
             compressor_frontend::parse_stopwatch.start();
