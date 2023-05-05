@@ -20,7 +20,7 @@
 #include "CommandLineArguments.hpp"
 
 using clg::CommandLineArguments;
-using compressor_frontend::load_lexer_from_file;
+using log_surgeon::load_lexer_from_file;
 using std::cout;
 using std::cerr;
 using std::endl;
@@ -132,7 +132,7 @@ static bool open_archive (const string& archive_path, Archive& archive_reader, s
 }
 
 static bool search (const vector<string>& search_strings, CommandLineArguments& command_line_args, Archive& archive,
-                    compressor_frontend::lexers::ByteLexer& forward_lexer, compressor_frontend::lexers::ByteLexer& reverse_lexer, bool use_heuristic,
+                    log_surgeon::lexers::ByteLexer& forward_lexer, log_surgeon::lexers::ByteLexer& reverse_lexer, bool use_heuristic,
                     std::map<uint32_t, std::string>& id_symbol) {
     ErrorCode error_code;
     auto search_begin_ts = command_line_args.get_search_begin_ts();
@@ -388,12 +388,12 @@ int main (int argc, const char* argv[]) {
 
     /// TODO: if performance is too slow, can make this more efficient by only diffing files with the same checksum
     const uint32_t max_map_schema_length = 100000;
-    std::map<std::string, compressor_frontend::lexers::ByteLexer> forward_lexer_map;
-    std::map<std::string, compressor_frontend::lexers::ByteLexer> reverse_lexer_map;
-    compressor_frontend::lexers::ByteLexer one_time_use_forward_lexer;
-    compressor_frontend::lexers::ByteLexer one_time_use_reverse_lexer;
-    compressor_frontend::lexers::ByteLexer* forward_lexer_ptr;
-    compressor_frontend::lexers::ByteLexer* reverse_lexer_ptr;
+    std::map<std::string, log_surgeon::lexers::ByteLexer> forward_lexer_map;
+    std::map<std::string, log_surgeon::lexers::ByteLexer> reverse_lexer_map;
+    log_surgeon::lexers::ByteLexer one_time_use_forward_lexer;
+    log_surgeon::lexers::ByteLexer one_time_use_reverse_lexer;
+    log_surgeon::lexers::ByteLexer* forward_lexer_ptr;
+    log_surgeon::lexers::ByteLexer* reverse_lexer_ptr;
 
     string archive_id;
     for (auto archive_ix = std::unique_ptr<GlobalMetadataDB::ArchiveIterator>(get_archive_iterator(*global_metadata_db, command_line_args.get_file_path()));
@@ -426,12 +426,12 @@ int main (int argc, const char* argv[]) {
                 // if there is a chance there might be a difference make a new lexer as it's pretty fast to create
                 if (forward_lexer_map_it == forward_lexer_map.end()) {
                     // Create forward lexer
-                    auto insert_result = forward_lexer_map.emplace(buf, compressor_frontend::lexers::ByteLexer());
+                    auto insert_result = forward_lexer_map.emplace(buf, log_surgeon::lexers::ByteLexer());
                     forward_lexer_ptr = &insert_result.first->second;
                     load_lexer_from_file(schema_file_path, false, *forward_lexer_ptr);
 
                     // Create reverse lexer
-                    insert_result = reverse_lexer_map.emplace(buf, compressor_frontend::lexers::ByteLexer());
+                    insert_result = reverse_lexer_map.emplace(buf, log_surgeon::lexers::ByteLexer());
                     reverse_lexer_ptr = &insert_result.first->second;
                     load_lexer_from_file(schema_file_path, true, *reverse_lexer_ptr);
                 } else {

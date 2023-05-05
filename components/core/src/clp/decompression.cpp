@@ -8,11 +8,14 @@
 #include <boost/filesystem/operations.hpp>
 #include <boost/filesystem/path.hpp>
 
+// Log surgeon
+#include <log_surgeon/LogEvent.hpp>
+#include <log_surgeon/ReaderParser.hpp>
+
 // spdlog
 #include <spdlog/spdlog.h>
 
 // Project headers
-#include "../compressor_frontend/LogParser.hpp"
 #include "../ErrorCode.hpp"
 #include "../FileWriter.hpp"
 #include "../GlobalMySQLMetadataDB.hpp"
@@ -82,12 +85,12 @@ namespace clp {
                         SPDLOG_WARN("Archive {} does not exist in '{}'.", archive_id, command_line_args.get_archives_dir());
                         continue;
                     }
-                    std::map<uint32_t, std::string> id_symbol;
+                    std::unordered_map<uint32_t, std::string> id_symbol;
                     auto schema_file_path = archive_path / streaming_archive::cSchemaFileName;
                     if (boost::filesystem::exists(schema_file_path)) {
-                        std::unique_ptr<compressor_frontend::LogParser> log_parser =
-                                std::make_unique<compressor_frontend::LogParser>(schema_file_path.string());
-                        id_symbol = log_parser->m_lexer.m_id_symbol;
+                        std::unique_ptr<log_surgeon::ReaderParser> reader_parser =
+                            std::make_unique<log_surgeon::ReaderParser>(schema_file_path.string());
+                        id_symbol = reader_parser->get_log_parser().m_lexer.m_id_symbol;
                     } else {
                         id_symbol[0] = "heuristic";
                     }
@@ -125,7 +128,7 @@ namespace clp {
                     archive_ix->get_id(archive_id);
                     auto archive_path = archives_dir / archive_id;
 
-                    std::map<uint32_t, std::string> id_symbol;
+                    std::unordered_map<uint32_t, std::string> id_symbol;
                     id_symbol[0] = "heuristic";
                     streaming_archive::reader::Archive archive_reader(id_symbol);
 
@@ -156,7 +159,7 @@ namespace clp {
                     archive_ix->get_id(archive_id);
                     auto archive_path = archives_dir / archive_id;
 
-                    std::map<uint32_t, std::string> id_symbol;
+                    std::unordered_map<uint32_t, std::string> id_symbol;
                     id_symbol[0] = "heuristic";
                     streaming_archive::reader::Archive archive_reader(id_symbol);
                     archive_reader.open(archive_path.string(), id_symbol);

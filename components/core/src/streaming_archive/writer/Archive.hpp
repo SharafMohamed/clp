@@ -14,13 +14,16 @@
 #include <boost/uuid/random_generator.hpp>
 #include <boost/uuid/uuid.hpp>
 
+// Log Surgeon
+#include <log_surgeon/LogEvent.hpp>
+#include <log_surgeon/ReaderParser.hpp>
+
 // Project headers
 #include "../../ArrayBackedPosIntSet.hpp"
 #include "../../ErrorCode.hpp"
 #include "../../GlobalMetadataDB.hpp"
 #include "../../LogTypeDictionaryWriter.hpp"
 #include "../../VariableDictionaryWriter.hpp"
-#include "../../compressor_frontend/Token.hpp"
 #include "../MetadataDB.hpp"
 
 namespace streaming_archive { namespace writer { 
@@ -84,7 +87,7 @@ namespace streaming_archive { namespace writer {
          * @throw streaming_archive::writer::Archive::OperationFailed if archive already exists, if it could not be stat-ed, if the directory structure could
                   not be created, if the file is not reset or problems with medatadata.
          */
-        void open (const UserConfig& user_config, std::map<uint32_t, std::string> m_id_symbol);
+        void open (const UserConfig& user_config, std::unordered_map<uint32_t, std::string> m_id_symbol);
         /**
          * Writes a final snapshot of the archive, closes all open files, and closes the dictionaries
          * @throw FileWriter::OperationFailed if any writer could not be closed
@@ -137,10 +140,8 @@ namespace streaming_archive { namespace writer {
          * @param has_timestamp
          * @throw FileWriter::OperationFailed if any write fails
          */
-        void write_msg_using_schema (compressor_frontend::Token* uncompressed_msg,
-                                     uint32_t uncompressed_msg_pos,
-                                     bool has_delimiter, bool has_timestamp,
-                                     std::map<uint32_t, std::string> id_symbol);
+        void write_msg_using_schema (log_surgeon::LogEventView& log_event_view,
+                                     std::unordered_map<uint32_t, std::string> const& id_symbol);
 
         /**
          * Writes snapshot of archive to disk including metadata of all files and new dictionary entries

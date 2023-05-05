@@ -7,19 +7,17 @@
 #include <spdlog/sinks/stdout_sinks.h>
 #include <spdlog/spdlog.h>
 
+// Log Surgeon
+#include <log_surgeon/LogParser.hpp>
+
 // Project headers
-#include "../compressor_frontend/LogParser.hpp"
 #include "../Profiler.hpp"
 #include "../Utils.hpp"
-#include "CommandLineArguments.hpp"
 #include "compression.hpp"
 #include "decompression.hpp"
 #include "utils.hpp"
-
-Stopwatch compressor_frontend::read_stopwatch;
-Stopwatch compressor_frontend::parse_stopwatch;
-Stopwatch compressor_frontend::compression_stopwatch;
-uint32_t compressor_frontend::number_of_log_messages = 0;
+#include "CommandLineArguments.hpp"
+#include "FileCompressor.hpp"
 
 using clp::CommandLineArguments;
 using std::string;
@@ -65,10 +63,10 @@ namespace clp {
 
         if (CommandLineArguments::Command::Compress == command_line_args.get_command()) {
             /// TODO: make this not a unique_ptr and test performance difference
-            std::unique_ptr<compressor_frontend::LogParser> log_parser;
+            std::unique_ptr<log_surgeon::ReaderParser> reader_parser;
             if (!command_line_args.get_use_heuristic()) {
                 const std::string& schema_file_path = command_line_args.get_schema_file_path();
-                log_parser = std::make_unique<compressor_frontend::LogParser>(schema_file_path);
+                reader_parser = std::make_unique<log_surgeon::ReaderParser>(schema_file_path);
             }
 
             boost::filesystem::path path_prefix_to_remove(command_line_args.get_path_prefix_to_remove());
@@ -97,7 +95,7 @@ namespace clp {
             bool compression_successful;
             try {
                 compression_successful = compress(command_line_args, files_to_compress, empty_directory_paths, grouped_files_to_compress,
-                                                  command_line_args.get_target_encoded_file_size(), std::move(log_parser),
+                                                  command_line_args.get_target_encoded_file_size(), std::move(reader_parser),
                                                   command_line_args.get_use_heuristic());
             } catch (TraceableException& e) {
                 ErrorCode error_code = e.get_error_code();
@@ -125,15 +123,15 @@ namespace clp {
         Profiler::stop_continuous_measurement<Profiler::ContinuousMeasurementIndex::Compression>();
         LOG_CONTINUOUS_MEASUREMENT(Profiler::ContinuousMeasurementIndex::Compression)
         SPDLOG_WARN("Total read time: {} seconds, with {} starts",
-                    compressor_frontend::read_stopwatch.get_time_taken_in_seconds(),
-                    compressor_frontend::read_stopwatch.get_num_starts());
+                    clp::FileCompressor::read_stopwatch.get_time_taken_in_seconds(),
+                    clp::FileCompressor::read_stopwatch.get_num_starts());
         SPDLOG_WARN("Total parse time: {} seconds, with {} starts",
-                    compressor_frontend::parse_stopwatch.get_time_taken_in_seconds(),
-                    compressor_frontend::parse_stopwatch.get_num_starts());
+                    clp::FileCompressor::parse_stopwatch.get_time_taken_in_seconds(),
+                    clp::FileCompressor::parse_stopwatch.get_num_starts());
         SPDLOG_WARN("Total compression time: {} seconds, with {} starts",
-                    compressor_frontend::compression_stopwatch.get_time_taken_in_seconds(),
-                    compressor_frontend::compression_stopwatch.get_num_starts());
-        SPDLOG_WARN("Total number of logs: {} logs", compressor_frontend::number_of_log_messages);
+                    clp::FileCompressor::parse_stopwatch.get_time_taken_in_seconds(),
+                    clp::FileCompressor::parse_stopwatch.get_num_starts());
+        SPDLOG_WARN("Total number of logs: {} logs", clp::FileCompressor::number_of_log_messages);
 
         return 0;
     }

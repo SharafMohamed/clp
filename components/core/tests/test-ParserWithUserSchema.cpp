@@ -14,15 +14,15 @@
 #include "../src/compressor_frontend/LogParser.hpp"
 #include "../src/GlobalMySQLMetadataDB.hpp"
 
-using compressor_frontend::DelimiterStringAST;
-using compressor_frontend::LALR1Parser;
-using compressor_frontend::lexers::ByteLexer;
-using compressor_frontend::LogParser;
-using compressor_frontend::ParserAST;
-using compressor_frontend::SchemaFileAST;
-using compressor_frontend::SchemaParser;
-using compressor_frontend::SchemaVarAST;
-using compressor_frontend::Token;
+using log_surgeon::DelimiterStringAST;
+using log_surgeon::LALR1Parser;
+using log_surgeon::lexers::ByteLexer;
+using log_surgeon::LogParser;
+using log_surgeon::ParserAST;
+using log_surgeon::SchemaFileAST;
+using log_surgeon::SchemaParser;
+using log_surgeon::SchemaVarAST;
+using log_surgeon::Token;
 
 std::unique_ptr<SchemaFileAST> generate_schema_ast(const std::string& schema_file) {
     SchemaParser schema_parser;
@@ -130,13 +130,13 @@ TEST_CASE("Test forward lexer", "[Search]") {
     ByteLexer forward_lexer;
     std::string schema_file_name = "../tests/test_schema_files/search_schema.txt";
     std::string schema_file_path = boost::filesystem::weakly_canonical(schema_file_name).string();
-    compressor_frontend::load_lexer_from_file(schema_file_path, false, forward_lexer);
+    log_surgeon::load_lexer_from_file(schema_file_path, false, forward_lexer);
     FileReader reader;
     reader.open("../tests/test_search_queries/easy.txt");
     forward_lexer.reset(reader);
     Token token = forward_lexer.scan();
-    while (token.m_type_ids_ptr->at(0) != (int)compressor_frontend::SymbolID::TokenEndID) {
-        SPDLOG_INFO("token:" + token.get_string() + "\n");
+    while (token.m_type_ids_ptr->at(0) != (int)log_surgeon::SymbolID::TokenEndID) {
+        SPDLOG_INFO("token:" + token.to_string() + "\n");
         SPDLOG_INFO("token.m_type_ids_ptr->back():" + forward_lexer.m_id_symbol[token.m_type_ids_ptr->back()] + "\n");
         token = forward_lexer.scan();
     }
@@ -146,13 +146,13 @@ TEST_CASE("Test reverse lexer", "[Search]") {
     ByteLexer reverse_lexer;
     std::string schema_file_name = "../tests/test_schema_files/search_schema.txt";
     std::string schema_file_path = boost::filesystem::weakly_canonical(schema_file_name).string();
-    compressor_frontend::load_lexer_from_file(schema_file_path, true, reverse_lexer);
+    log_surgeon::load_lexer_from_file(schema_file_path, true, reverse_lexer);
     FileReader reader;
     reader.open("../tests/test_search_queries/easy.txt");
     reverse_lexer.reset(reader);
     Token token = reverse_lexer.scan();
-    while (token.m_type_ids_ptr->at(0) != (int)compressor_frontend::SymbolID::TokenEndID) {
-        SPDLOG_INFO("token:" + token.get_string() + "\n");
+    while (token.m_type_ids_ptr->at(0) != (int)log_surgeon::SymbolID::TokenEndID) {
+        SPDLOG_INFO("token:" + token.to_string() + "\n");
         SPDLOG_INFO("token.m_type_ids_ptr->back():" + reverse_lexer.m_id_symbol[token.m_type_ids_ptr->back()] + "\n");
         token = reverse_lexer.scan();
     }

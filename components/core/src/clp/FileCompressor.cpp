@@ -11,22 +11,23 @@
 // libarchive
 #include <archive_entry.h>
 
+// Log surgeon
+#include <log_surgeon/LogEvent.hpp>
+#include <log_surgeon/ReaderParser.hpp>
+
 // Project headers
-#include "../compressor_frontend/library/Api.hpp"
-#include "../compressor_frontend/LogInputBuffer.hpp"
-#include "../compressor_frontend/LogOutputBuffer.hpp"
 #include "../Profiler.hpp"
 #include "utils.hpp"
 
-extern Stopwatch read_stopwatch;
-extern Stopwatch parse_stopwatch;
-extern Stopwatch compression_stopwatch;
-extern uint32_t number_of_log_messages;
+Stopwatch clp::FileCompressor::read_stopwatch;
+Stopwatch clp::FileCompressor::parse_stopwatch;
+Stopwatch clp::FileCompressor::compression_stopwatch;
+uint32_t clp::FileCompressor::number_of_log_messages = 0;
 
-using compressor_frontend::library::LogView;
-using compressor_frontend::library::ReaderParser;
-using compressor_frontend::library::Reader;
-using compressor_frontend::LogParser;
+using log_surgeon::LogEventView;
+using log_surgeon::ReaderParser;
+using log_surgeon::Reader;
+using log_surgeon::ReaderParser;
 using std::cout;
 using std::endl;
 using std::set;
@@ -139,114 +140,6 @@ namespace clp {
         return succeeded;
     }
 
-    void FileCompressor::parse_and_encode_new (size_t target_data_size_of_dicts, streaming_archive::writer::Archive::UserConfig& archive_user_config,
-                                               size_t target_encoded_file_size, const string& path_for_compression, group_id_t group_id,
-                                               streaming_archive::writer::Archive& archive_writer, ReaderInterface& reader)
-    {
-        archive_writer.m_target_data_size_of_dicts = target_data_size_of_dicts;
-        archive_writer.m_archive_user_config = archive_user_config;
-        archive_writer.m_path_for_compression = path_for_compression;
-        archive_writer.m_group_id = group_id;
-        archive_writer.m_target_encoded_file_size = target_encoded_file_size;
-        // Open compressed file
-        archive_writer.create_and_open_file(path_for_compression, group_id, m_uuid_generator(), 0);
-        /// TODO:Add the  m_utf8_validation_buf into the start of the input buffer
-        reader.seek_from_begin(0);
-        m_log_parser->set_archive_writer_ptr(&archive_writer);
-        m_log_parser->get_archive_writer_ptr()->m_old_ts_pattern.clear();
-        m_log_parser->get_archive_writer_ptr()->m_timestamp_set = false;
-        try {
-            // Create buffers statically
-            /// TODO: create this and pass them in like m_log_parser to avoid re-initializing each time
-            static compressor_frontend::LogInputBuffer input_buffer;
-            static compressor_frontend::LogOutputBuffer output_buffer;
-            input_buffer.reset();
-            output_buffer.reset();
-            input_buffer.read(reader);
-
-            // Initialize parser and lexer
-            m_log_parser->reset();
-            LogParser::ParsingAction parsing_action = LogParser::ParsingAction::None;
-            bool done = false;
-            while (!done && parsing_action != LogParser::ParsingAction::CompressAndFinish) {
-                // Parse until reading is needed
-                bool parse_successful = false;
-                while (parse_successful == false) {
-                    try {
-                        compressor_frontend::parse_stopwatch.start();
-                        parsing_action = m_log_parser->parse(input_buffer, output_buffer);
-                        compressor_frontend::parse_stopwatch.stop();
-                        parse_successful = true;
-                    } catch (std::runtime_error const& err) {
-                        compressor_frontend::parse_stopwatch.stop();
-                        if (string(err.what()) == "Input buffer about to overflow") {
-                            uint32_t old_storage_size;
-                            compressor_frontend::read_stopwatch.start();
-                            bool flipped_static_buffer = input_buffer.increase_capacity_and_read(
-                                    reader, old_storage_size);
-                            compressor_frontend::read_stopwatch.stop();
-                            if(flipped_static_buffer) {
-                                m_log_parser->flip_lexer_states(old_storage_size);
-                            }
-                        }  else {
-                            throw (err);
-                        }
-                        parse_successful = false;
-                    }
-                }
-                compressor_frontend::number_of_log_messages++;
-
-                compressor_frontend::compression_stopwatch.start();
-                switch (parsing_action) {
-                    case (LogParser::ParsingAction::Compress) : {
-                        archive_writer.write_msg_using_schema(
-                                output_buffer.storage().get_mutable_active_buffer(),
-                                output_buffer.storage().pos(), output_buffer.has_delimiters(),
-                                output_buffer.has_timestamp(), m_log_parser->m_lexer.m_id_symbol);
-                        compressor_frontend::read_stopwatch.start();
-                        input_buffer.try_read(reader);
-                        compressor_frontend::read_stopwatch.stop();
-                        if(output_buffer.has_timestamp()) {
-                            output_buffer.set_pos(0);
-                        } else {
-                            output_buffer.set_pos(1);
-                        }
-                        break;
-                    }
-                    case (LogParser::ParsingAction::CompressAndFinish) : {
-                        archive_writer.write_msg_using_schema(
-                                output_buffer.storage().get_mutable_active_buffer(),
-                                output_buffer.storage().pos(), output_buffer.has_delimiters(),
-                                output_buffer.has_timestamp(), m_log_parser->m_lexer.m_id_symbol);
-                        break;
-                    }
-                    default : {
-
-                    }
-                }
-                compressor_frontend::compression_stopwatch.stop();
-            }
-
-        } catch (std::runtime_error const& err) {
-            if (string(err.what()).find("Lexer failed to find a match after checking entire buffer") != std::string::npos) {
-                close_file_and_append_to_segment(archive_writer);
-                FileReader* file_reader = dynamic_cast<FileReader*>(&reader);
-                if(file_reader != nullptr) {
-                    string error_string = string(err.what()) + " in file " + file_reader->get_path();
-                    file_reader->close();
-                }
-                SPDLOG_ERROR(err.what());
-            } else {
-                throw (err);
-            }
-        }
-        compressor_frontend::compression_stopwatch.start();
-        close_file_and_append_to_segment(archive_writer);
-        // archive_writer_config needs to persist between files
-        archive_user_config = archive_writer.m_archive_user_config;
-        compressor_frontend::compression_stopwatch.stop();
-    }
-
     void FileCompressor::parse_and_encode_with_library (size_t target_data_size_of_dicts,
             streaming_archive::writer::Archive::UserConfig& archive_user_config,
             size_t target_encoded_file_size, const string& path_for_compression,
@@ -263,48 +156,34 @@ namespace clp {
         reader.seek_from_begin(0);
         archive_writer.m_old_ts_pattern.clear();
         archive_writer.m_timestamp_set = false;
-        Reader reader_wrapper {
-                [&] (char *buf, size_t count, size_t& read_to) -> bool {
-                    return reader.read(buf, count, read_to);
-                }
-        };
-        compressor_frontend::parse_stopwatch.start();
-        static ReaderParser reader_parser = ReaderParser::reader_parser_from_file(
-                m_log_parser->m_schema_file_path);
-        reader_parser.set_reader_and_read(reader_wrapper);
-        static LogView log_view(reader_parser.get_log_parser());
-        compressor_frontend::parse_stopwatch.stop();
-        while (false == reader_parser.done()) {
-            compressor_frontend::parse_stopwatch.start();
-            int error_code = reader_parser.get_next_log_view(log_view);
-            compressor_frontend::parse_stopwatch.stop();
-            if (0 != error_code) {
+        Reader reader_wrapper{[&](char* buf, size_t count, size_t& read_to) -> log_surgeon::ErrorCode {
+            reader.read(buf, count, read_to);
+            if (read_to == 0) {
+                return log_surgeon::ErrorCode::EndOfFile;
+            }
+            return log_surgeon::ErrorCode::Success;
+        }};
+        clp::FileCompressor::parse_stopwatch.start();
+        m_reader_parser->reset_and_set_reader(reader_wrapper);
+        static LogEventView log_view{&m_reader_parser->get_log_parser()};
+        clp::FileCompressor::parse_stopwatch.stop();
+        while (false == m_reader_parser->done()) {
+            clp::FileCompressor::parse_stopwatch.start();
+            if (log_surgeon::ErrorCode err{m_reader_parser->get_next_event_view(log_view)};
+                    log_surgeon::ErrorCode::Success != err) {
                 SPDLOG_ERROR("Parsing Failed");
                 throw(std::runtime_error("Parsing Failed"));
             }
-            compressor_frontend::compression_stopwatch.start();
-            if (false == reader_parser.done()) {
-                archive_writer.write_msg_using_schema(
-                        log_view.m_log_output_buffer.storage().get_mutable_active_buffer(),
-                        log_view.m_log_output_buffer.storage().pos(),
-                        log_view.m_log_output_buffer.has_delimiters(),
-                        log_view.m_log_output_buffer.has_timestamp(),
-                        m_log_parser->m_lexer.m_id_symbol);
-            } else {
-                archive_writer.write_msg_using_schema(
-                        log_view.m_log_output_buffer.storage().get_mutable_active_buffer(),
-                        log_view.m_log_output_buffer.storage().pos(),
-                        log_view.m_log_output_buffer.has_delimiters(),
-                        log_view.m_log_output_buffer.has_timestamp(),
-                        m_log_parser->m_lexer.m_id_symbol);
-            }
-            compressor_frontend::compression_stopwatch.stop();
+            clp::FileCompressor::parse_stopwatch.stop();
+            clp::FileCompressor::compression_stopwatch.start();
+            archive_writer.write_msg_using_schema(log_view, m_reader_parser->get_log_parser().m_lexer.m_id_symbol);
+            clp::FileCompressor::compression_stopwatch.stop();
         }
-        compressor_frontend::compression_stopwatch.start();
+        clp::FileCompressor::compression_stopwatch.start();
         close_file_and_append_to_segment(archive_writer);
         // archive_writer_config needs to persist between files
         archive_user_config = archive_writer.m_archive_user_config;
-        compressor_frontend::compression_stopwatch.stop();
+        clp::FileCompressor::compression_stopwatch.stop();
     }
 
     void FileCompressor::parse_and_encode_with_heuristic (size_t target_data_size_of_dicts, streaming_archive::writer::Archive::UserConfig& archive_user_config,
@@ -318,7 +197,7 @@ namespace clp {
 
         // Parse content from UTF-8 validation buffer
         size_t buf_pos = 0;
-        std::map<uint32_t, std::string> id_symbol;
+        std::unordered_map<uint32_t, std::string> id_symbol;
         id_symbol[0] = "heuristic";
         while (m_message_parser.parse_next_message(false, m_utf8_validation_buf_length, m_utf8_validation_buf, buf_pos, m_parsed_message)) {
             if (archive_writer.get_data_size_of_dictionaries() >= target_data_size_of_dicts) {
@@ -405,11 +284,11 @@ namespace clp {
                 parent_directories.emplace(file_parent_path);
             }
 
-            std::map<uint32_t, std::string> id_symbol;
+            std::unordered_map<uint32_t, std::string> id_symbol;
             if(use_heuristic) {
                 id_symbol[0] = "heuristic";
             } else {
-                id_symbol = m_log_parser->m_lexer.m_id_symbol;
+                id_symbol = m_reader_parser->get_log_parser().m_lexer.m_id_symbol;
             }
             if (archive_writer.get_data_size_of_dictionaries() >= target_data_size_of_dicts) {
                 split_archive(archive_user_config, archive_writer, id_symbol);

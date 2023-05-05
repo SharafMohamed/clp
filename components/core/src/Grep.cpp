@@ -186,7 +186,7 @@ SubQueryMatchabilityResult generate_logtypes_and_vars_for_subquery (const Archiv
 }
 
 bool Grep::process_raw_query (const Archive& archive, const string& search_string, epochtime_t search_begin_ts, epochtime_t search_end_ts, bool ignore_case,
-                              Query& query, compressor_frontend::lexers::ByteLexer& forward_lexer, compressor_frontend::lexers::ByteLexer& reverse_lexer,
+                              Query& query, log_surgeon::lexers::ByteLexer& forward_lexer, log_surgeon::lexers::ByteLexer& reverse_lexer,
                               bool use_heuristic, std::map<uint32_t, std::string>& id_symbol)
 {
     // Set properties which require no processing
@@ -392,7 +392,7 @@ bool Grep::get_bounds_of_next_potential_var (const string& value, size_t& begin_
 }
 
 bool Grep::get_bounds_of_next_potential_var (const string& value, size_t& begin_pos, size_t& end_pos, bool& is_var, std::set<int>& schema_types,
-                                             compressor_frontend::lexers::ByteLexer& forward_lexer, compressor_frontend::lexers::ByteLexer& reverse_lexer,
+                                             log_surgeon::lexers::ByteLexer& forward_lexer, log_surgeon::lexers::ByteLexer& reverse_lexer,
                                              string& post_processed_value, bool& is_typed, size_t& typed_begin_pos, size_t& typed_end_pos) {
     const size_t value_length = value.length();
     if (end_pos >= value_length) {
@@ -520,7 +520,7 @@ bool Grep::get_bounds_of_next_potential_var (const string& value, size_t& begin_
                     break;
                 }
             }
-            compressor_frontend::Token token;
+            log_surgeon::Token token;
             if (has_wildcard_in_middle || (has_prefix_wildcard && has_suffix_wildcard)) {
                 // DO NOTHING
             } else {
@@ -543,8 +543,8 @@ bool Grep::get_bounds_of_next_potential_var (const string& value, size_t& begin_
                     token = forward_lexer.scan();
                     token.m_type_ids_set.insert(token.m_type_ids_ptr->at(0));
                 }
-                if (token.m_type_ids_set.find((int) compressor_frontend::SymbolID::TokenUncaughtStringID) == token.m_type_ids_set.end() &&
-                    token.m_type_ids_set.find((int) compressor_frontend::SymbolID::TokenEndID) == token.m_type_ids_set.end() ) {
+                if (token.m_type_ids_set.find((int) log_surgeon::SymbolID::TokenUncaughtStringID) == token.m_type_ids_set.end() &&
+                    token.m_type_ids_set.find((int) log_surgeon::SymbolID::TokenEndID) == token.m_type_ids_set.end() ) {
                     is_var = true;
                 }
                 schema_types = token.m_type_ids_set;

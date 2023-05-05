@@ -5,6 +5,7 @@
 #include <filesystem>
 #include <iterator>
 #include <list>
+#include <map>
 #include <memory>
 #include <string>
 #include <utility>
@@ -35,7 +36,7 @@ namespace streaming_archive { namespace reader {
         };
 
         // Constructors
-        Archive(std::map<uint32_t, std::string>& id_symbol) : m_var_dictionary(id_symbol.size()) { }
+        Archive(std::unordered_map<uint32_t, std::string>& id_symbol) : m_var_dictionary(id_symbol.size()) { }
 
         // Methods
         /**
@@ -52,7 +53,7 @@ namespace streaming_archive { namespace reader {
          * @throw streaming_archive::reader::Archive::OperationFailed if could not stat file or it isn't a directory or metadata is corrupted
          * @throw FileReader::OperationFailed if failed to open any dictionary
          */
-        void open (const std::string& path, std::map<uint32_t, std::string>& id_symbol);
+        void open (const std::string& path, std::unordered_map<uint32_t, std::string>& id_symbol);
         void close ();
 
         /**
@@ -104,7 +105,7 @@ namespace streaming_archive { namespace reader {
          * @return true if message was successfully decompressed, false otherwise
          * @throw TimestampPattern::OperationFailed if failed to insert timestamp
          */
-        bool decompress_message (File& file, const Message& compressed_msg, std::string& decompressed_msg, std::map<uint32_t, std::string>& id_symbol);
+        bool decompress_message (File& file, const Message& compressed_msg, std::string& decompressed_msg, std::unordered_map<uint32_t, std::string>& id_symbol);
 
         void decompress_empty_directories (const std::string& output_dir);
 

@@ -37,8 +37,8 @@ public:
      * @return true if query may match messages, false otherwise
      */
     static bool process_raw_query (const streaming_archive::reader::Archive& archive, const std::string& search_string, epochtime_t search_begin_ts,
-                                   epochtime_t search_end_ts, bool ignore_case, Query& query, compressor_frontend::lexers::ByteLexer& forward_lexer,
-                                   compressor_frontend::lexers::ByteLexer& reverse_lexer, bool use_heuristic, std::map<uint32_t, std::string>& id_symbol);
+                                   epochtime_t search_end_ts, bool ignore_case, Query& query, log_surgeon::lexers::ByteLexer& forward_lexer,
+                                   log_surgeon::lexers::ByteLexer& reverse_lexer, bool use_heuristic, std::map<uint32_t, std::string>& id_symbol);
 
     /**
      * Returns bounds of next potential variable (either a definite variable or a token with wildcards)
@@ -61,8 +61,8 @@ public:
      * @return true if another potential variable was found, false otherwise
      */
     static bool get_bounds_of_next_potential_var (const std::string& value, size_t& begin_pos, size_t& end_pos, bool& is_var,
-                                                  std::set<int>& schema_types, compressor_frontend::lexers::ByteLexer& forward_lexer,
-                                                  compressor_frontend::lexers::ByteLexer& reverse_lexer, std::string& post_processed_string,
+                                                  std::set<int>& schema_types, log_surgeon::lexers::ByteLexer& forward_lexer,
+                                                  log_surgeon::lexers::ByteLexer& reverse_lexer, std::string& post_processed_string,
                                                   bool& is_typed, size_t& typed_begin_pos, size_t& typed_end_pos);
     
     /**

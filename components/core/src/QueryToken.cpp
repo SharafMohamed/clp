@@ -3,6 +3,8 @@
 // Project headers
 #include "EncodedVariableInterpreter.hpp"
 
+using std::string;
+
 QueryToken::QueryToken (const string& query_string, const size_t begin_pos, const size_t end_pos, const bool is_var) : m_current_possible_type_ix(0) {
     m_begin_pos = begin_pos;
     m_end_pos = end_pos;
@@ -144,8 +146,8 @@ bool QueryToken::change_to_next_possible_type (bool use_heuristic) {
     if(use_heuristic == false && m_possible_types[m_current_possible_type_ix] == Type::DictOrIntVar) {
         m_current_possible_schema_type_ix++;
         while (m_current_possible_schema_type_ix != m_schema_types.end() &&
-               (*m_current_possible_schema_type_ix == (int) compressor_frontend::SymbolID::TokenUncaughtStringID ||
-                *m_current_possible_schema_type_ix == (int) compressor_frontend::SymbolID::TokenDoubleId)) {
+               (*m_current_possible_schema_type_ix == (int) log_surgeon::SymbolID::TokenUncaughtStringID ||
+                *m_current_possible_schema_type_ix == (int) log_surgeon::SymbolID::TokenDoubleId)) {
             m_current_possible_schema_type_ix++;
         }
         if(m_current_possible_schema_type_ix != m_schema_types.end()) {

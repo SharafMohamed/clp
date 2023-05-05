@@ -9,7 +9,6 @@
 #include <vector>
 
 // Project headers
-#include "compressor_frontend/Lexer.hpp"
 #include "Defs.h"
 #include "ErrorCode.hpp"
 #include "FileReader.hpp"

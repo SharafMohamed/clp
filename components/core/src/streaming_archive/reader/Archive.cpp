@@ -33,7 +33,7 @@ namespace streaming_archive { namespace reader {
         file_reader.close();
     }
 
-    void Archive::open (const string& path, std::map<uint32_t, std::string>& id_symbol) {
+    void Archive::open (const string& path, std::unordered_map<uint32_t, std::string>& id_symbol) {
         SPDLOG_INFO("Decompressing {}", path);
         // Determine whether path is file or directory
         struct stat path_stat = {};
@@ -164,7 +164,7 @@ namespace streaming_archive { namespace reader {
         return file.get_next_message(msg);
     }
 
-    bool Archive::decompress_message (File& file, const Message& compressed_msg, string& decompressed_msg, std::map<uint32_t, std::string>& id_symbol) {
+    bool Archive::decompress_message (File& file, const Message& compressed_msg, string& decompressed_msg, std::unordered_map<uint32_t, std::string>& id_symbol) {
         decompressed_msg.clear();
 
         // Build original message content

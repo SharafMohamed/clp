@@ -187,7 +187,7 @@ namespace clp {
 
     void split_archive (streaming_archive::writer::Archive::UserConfig& archive_user_config,
                         streaming_archive::writer::Archive& archive_writer,
-                        std::map<uint32_t, std::string>& id_symbol) {
+                        std::unordered_map<uint32_t, std::string> const& id_symbol) {
         archive_writer.close();
         archive_user_config.id = boost::uuids::random_generator()();
         ++archive_user_config.creation_num;
@@ -214,7 +214,7 @@ namespace clp {
                                  group_id_t group_id,
                                  const TimestampPattern* last_timestamp_pattern,
                                  streaming_archive::writer::Archive& archive_writer,
-                                 std::map<uint32_t, std::string>& id_symbol)
+                                 std::unordered_map<uint32_t, std::string> const& id_symbol)
     {
         const auto& encoded_file = archive_writer.get_file();
         auto orig_file_id = encoded_file.get_orig_file_id();

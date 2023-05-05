@@ -15,8 +15,9 @@
 class QueryToken {
 public:
     // Constructors
-    QueryToken (const string& query_string, size_t begin_pos, size_t end_pos, bool is_var);
-    QueryToken (const string& query_string, size_t begin_pos, size_t end_pos, bool is_var, std::set<int> schema_types);
+    QueryToken (const std::string& query_string, size_t begin_pos, size_t end_pos, bool is_var);
+    QueryToken (const std::string& query_string, size_t begin_pos, size_t end_pos, bool is_var,
+                std::set<int> schema_types);
 
     // Methods
     bool cannot_convert_to_non_dict_var () const;
@@ -31,7 +32,7 @@ public:
 
     size_t get_begin_pos () const;
     size_t get_end_pos () const;
-    const string& get_value () const;
+    const std::string& get_value () const;
     int get_current_schema_type () const;
 
     bool change_to_next_possible_type (bool use_heuristic);
@@ -58,14 +59,14 @@ private:
 
     size_t m_begin_pos;
     size_t m_end_pos;
-    string m_value;
+    std::string m_value;
 
     // Schema var type
     std::set<int> m_schema_types;
     // Type if variable has unambiguous type
     Type m_type;
     // Types if variable type is ambiguous
-    vector<Type> m_possible_types;
+    std::vector<Type> m_possible_types;
     // Index of the current possible type selected for generating a subquery
     size_t m_current_possible_type_ix;
     // Index of the current possible schema type selected for generating a subquery

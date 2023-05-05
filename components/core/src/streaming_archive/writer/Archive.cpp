@@ -1,5 +1,4 @@
 #include "Archive.hpp"
-#include "../../clp/utils.hpp"
 
 // C libraries
 #include <sys/stat.h>
@@ -22,11 +21,12 @@
 #include <spdlog/spdlog.h>
 
 // Project headers
+#include "../../clp/utils.hpp"
 #include "../../EncodedVariableInterpreter.hpp"
 #include "../../Utils.hpp"
 #include "../Constants.hpp"
-#include "../../compressor_frontend/LogParser.hpp"
 
+using log_surgeon::LogEventView;
 using std::list;
 using std::make_unique;
 using std::string;
@@ -49,7 +49,7 @@ namespace streaming_archive::writer {
         }
     }
 
-    void Archive::open (const UserConfig& user_config, std::map<uint32_t, std::string> id_symbol) {
+    void Archive::open (const UserConfig& user_config, std::unordered_map<uint32_t, std::string> id_symbol) {
         int retval;
 
         m_id = user_config.id;
@@ -320,17 +320,16 @@ namespace streaming_archive::writer {
         }
     }
     
-    void Archive::write_msg_using_schema (compressor_frontend::Token* uncompressed_msg,
-                                          uint32_t uncompressed_msg_pos, const bool has_delimiter,
-                                          const bool has_timestamp,
-                                          std::map<uint32_t, std::string> id_symbol) {
+    void Archive::write_msg_using_schema (LogEventView& log_view,
+                                          std::unordered_map<uint32_t, std::string> const& id_symbol) {
         epochtime_t timestamp = 0;
         TimestampPattern* timestamp_pattern = nullptr;
-        if (has_timestamp) {
+        if (log_view.get_log_output_buffer()->has_timestamp()) {
             size_t start;
             size_t end;
             timestamp_pattern = (TimestampPattern*) TimestampPattern::search_known_ts_patterns(
-                    uncompressed_msg[0].get_string(), timestamp, start, end);
+                    log_view.get_log_output_buffer()->get_mutable_token(0).to_string(), timestamp,
+                    start, end);
             if (m_old_ts_pattern != *timestamp_pattern) {
                 change_ts_pattern(timestamp_pattern);
                 m_old_ts_pattern = *timestamp_pattern;
@@ -360,21 +359,23 @@ namespace streaming_archive::writer {
 
         size_t num_uncompressed_bytes = 0;
         // Timestamp is included in the uncompressed message size
-        uint32_t start_pos = uncompressed_msg[0].m_start_pos;
+        uint32_t start_pos = log_view.get_log_output_buffer()->get_token(0).m_start_pos;
         if (timestamp_pattern == nullptr) {
-            start_pos = uncompressed_msg[1].m_start_pos;
+            start_pos = log_view.get_log_output_buffer()->get_token(1).m_start_pos;
         }
-        uint32_t end_pos = uncompressed_msg[uncompressed_msg_pos - 1].m_end_pos;
+        uint32_t end_pos = log_view.get_log_output_buffer()->get_token(
+                log_view.get_log_output_buffer()->pos() - 1).m_end_pos;
         if (start_pos <= end_pos) {
             num_uncompressed_bytes = end_pos - start_pos;
         } else {
-            num_uncompressed_bytes = uncompressed_msg[0].m_buffer_size - start_pos + end_pos;
+            num_uncompressed_bytes = log_view.get_log_output_buffer()->get_token(0).m_buffer_size - start_pos + end_pos;
         }
-        for (uint32_t i = 1; i < uncompressed_msg_pos; i++) {
-            compressor_frontend::Token& token = uncompressed_msg[i];
+        for (uint32_t i = 1; i < log_view.get_log_output_buffer()->pos(); i++) {
+            log_surgeon::Token& token = log_view.get_log_output_buffer()->get_mutable_token(i);
             int token_type = token.m_type_ids_ptr->at(0);
-            if (has_delimiter && token_type != (int) compressor_frontend::SymbolID::TokenUncaughtStringID &&
-                token_type != (int) compressor_frontend::SymbolID::TokenNewlineId) {
+            if (log_view.get_log_output_buffer()->has_delimiters() &&
+                    token_type != (int) log_surgeon::SymbolID::TokenUncaughtStringID &&
+                    token_type != (int) log_surgeon::SymbolID::TokenNewlineId) {
                 m_logtype_dict_entry.add_constant(token.get_delimiter(), 0, 1);
                 if (token.m_start_pos == token.m_buffer_size - 1) {
                     token.m_start_pos = 0;
@@ -383,43 +384,43 @@ namespace streaming_archive::writer {
                 }
             }
             switch (token_type) {
-                case (int) compressor_frontend::SymbolID::TokenNewlineId: 
-                case (int) compressor_frontend::SymbolID::TokenUncaughtStringID: {
-                    m_logtype_dict_entry.add_constant(token.get_string(), 0, token.get_length());
+                case (int) log_surgeon::SymbolID::TokenNewlineId:
+                case (int) log_surgeon::SymbolID::TokenUncaughtStringID: {
+                    m_logtype_dict_entry.add_constant(token.to_string(), 0, token.get_length());
                     break;
                 }
-                case (int) compressor_frontend::SymbolID::TokenHexId: {
+                case (int) log_surgeon::SymbolID::TokenHexId: {
                     encoded_variable_t encoded_var;
-                    if (!EncodedVariableInterpreter::convert_string_to_representable_hex_var(token.get_string(), encoded_var)) {
+                    if (!EncodedVariableInterpreter::convert_string_to_representable_hex_var(token.to_string(), encoded_var)) {
                         variable_dictionary_id_t id;
-                        m_var_dict_ptrs[token_type]->add_entry(token.get_string(), id);
+                        m_var_dict_ptrs[token_type]->add_entry(token.to_string(), id);
                         encoded_var = EncodedVariableInterpreter::encode_var_dict_id(id);
                         m_var_ids[token_type].push_back(id);
                     }
-                    m_logtype_dict_entry.add_non_double_schema_var((int) compressor_frontend::SymbolID::TokenHexId);
+                    m_logtype_dict_entry.add_non_double_schema_var((int) log_surgeon::SymbolID::TokenHexId);
                     m_encoded_vars.push_back(encoded_var);
                     break;
                 }
-                case (int) compressor_frontend::SymbolID::TokenIntId: {
+                case (int) log_surgeon::SymbolID::TokenIntId: {
                     encoded_variable_t encoded_var;
-                    if (!EncodedVariableInterpreter::convert_string_to_representable_integer_var(token.get_string(), encoded_var)) {
+                    if (!EncodedVariableInterpreter::convert_string_to_representable_integer_var(token.to_string(), encoded_var)) {
                         variable_dictionary_id_t id;
-                        m_var_dict_ptrs[token_type]->add_entry(token.get_string(), id);
+                        m_var_dict_ptrs[token_type]->add_entry(token.to_string(), id);
                         encoded_var = EncodedVariableInterpreter::encode_var_dict_id(id);
                         m_var_ids[token_type].push_back(id);
                     }
-                    m_logtype_dict_entry.add_non_double_schema_var((int) compressor_frontend::SymbolID::TokenIntId);
+                    m_logtype_dict_entry.add_non_double_schema_var((int) log_surgeon::SymbolID::TokenIntId);
                     m_encoded_vars.push_back(encoded_var);
                     break;
                 }
-                case (int) compressor_frontend::SymbolID::TokenDoubleId: {
+                case (int) log_surgeon::SymbolID::TokenDoubleId: {
                     encoded_variable_t encoded_var;
-                    if (!EncodedVariableInterpreter::convert_string_to_representable_double_var(token.get_string(), encoded_var)) {
+                    if (!EncodedVariableInterpreter::convert_string_to_representable_double_var(token.to_string(), encoded_var)) {
                         variable_dictionary_id_t id;
-                        m_var_dict_ptrs[token_type]->add_entry(token.get_string(), id);
+                        m_var_dict_ptrs[token_type]->add_entry(token.to_string(), id);
                         encoded_var = EncodedVariableInterpreter::encode_var_dict_id(id);
                         m_var_ids[token_type].push_back(id);
-                        m_logtype_dict_entry.add_non_double_schema_var((int) compressor_frontend::SymbolID::TokenDoubleId);
+                        m_logtype_dict_entry.add_non_double_schema_var((int) log_surgeon::SymbolID::TokenDoubleId);
                     } else {
                         m_logtype_dict_entry.add_double_var();
                     }
@@ -430,7 +431,7 @@ namespace streaming_archive::writer {
                     // Variable string looks like a dictionary variable, so encode it as so
                     encoded_variable_t encoded_var;
                     variable_dictionary_id_t id;
-                    m_var_dict_ptrs[token_type]->add_entry(token.get_string(), id);
+                    m_var_dict_ptrs[token_type]->add_entry(token.to_string(), id);
                     encoded_var = EncodedVariableInterpreter::encode_var_dict_id(id);
                     m_var_ids[token_type].push_back(id);
                     m_logtype_dict_entry.add_non_double_schema_var(token_type);

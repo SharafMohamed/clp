@@ -47,10 +47,10 @@ int main (int argc, const char* argv[]) {
     auto archive_path = boost::filesystem::path(command_line_args.get_archive_path());
     auto schema_file_path = archive_path / streaming_archive::cSchemaFileName;
     bool use_heuristic = true;
-    std::unique_ptr<compressor_frontend::LogParser> log_parser;
+    std::unique_ptr<log_surgeon::LogParser> log_parser;
     if (boost::filesystem::exists(schema_file_path)) {
         use_heuristic = false;
-        log_parser = std::make_unique<compressor_frontend::LogParser>(schema_file_path.string());
+        log_parser = std::make_unique<log_surgeon::LogParser>(schema_file_path.string());
     }
 
 

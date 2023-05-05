@@ -336,7 +336,7 @@ bool EncodedVariableInterpreter::decode_variables_into_message (
                                             const std::vector<VariableDictionaryReader>& var_dict,
                                             const vector<encoded_variable_t>& encoded_vars,
                                             string& decompressed_msg,
-                                            std::map<uint32_t, std::string>& id_symbol)
+                                            std::unordered_map<uint32_t, std::string>& id_symbol)
 {
     size_t num_vars_in_logtype = logtype_dict_entry.get_num_vars();
 
@@ -366,12 +366,12 @@ bool EncodedVariableInterpreter::decode_variables_into_message (
                     decompressed_msg += std::to_string(encoded_vars[i]);
                 } else {
                     switch (schema_id) {
-                        case (int) compressor_frontend::SymbolID::TokenHexId: {
+                        case (int) log_surgeon::SymbolID::TokenHexId: {
                             convert_encoded_hex_to_string(encoded_vars[i], decoded_str);
                             decompressed_msg += decoded_str;
                             break;
                         }
-                        case (int) compressor_frontend::SymbolID::TokenIntId: {
+                        case (int) log_surgeon::SymbolID::TokenIntId: {
                             decompressed_msg += std::to_string(encoded_vars[i]);
                             break;
                         }

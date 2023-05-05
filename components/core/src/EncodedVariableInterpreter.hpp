@@ -2,8 +2,13 @@
 #define ENCODEDVARIABLEINTERPRETER_HPP
 
 // C++ standard libraries
+#include <map>
 #include <string>
 #include <vector>
+
+// Log surgeon
+#include <log_surgeon/LogEvent.hpp>
+#include <log_surgeon/ReaderParser.hpp>
 
 // Project headers
 #include "Query.hpp"
@@ -105,7 +110,7 @@ public:
                                             const std::vector<VariableDictionaryReader>& var_dict,
                                             const std::vector<encoded_variable_t>& encoded_vars,
                                             std::string& decompressed_msg,
-                                            std::map<uint32_t, std::string>& id_symbol);
+                                            std::unordered_map<uint32_t, std::string>& id_symbol);
 
     /**
      * Encodes a string-form variable, and if it is dictionary variable, searches for its ID in the given variable dictionary

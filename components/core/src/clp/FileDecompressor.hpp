@@ -21,7 +21,7 @@ namespace clp {
         // Methods
         bool decompress_file (streaming_archive::MetadataDB::FileIterator& file_metadata_ix, const std::string& output_dir,
                               streaming_archive::reader::Archive& archive_reader, std::unordered_map<std::string, std::string>& temp_path_to_final_path,
-                              std::map<uint32_t, std::string>& id_symbol);
+                              std::unordered_map<uint32_t, std::string>& id_symbol);
 
     private:
         // Variables
