@@ -8,6 +8,9 @@
 #include <unordered_set>
 #include <vector>
 
+// Log surgeon
+#include <log_surgeon/Lexer.hpp>
+
 // Project headers
 #include "Defs.h"
 #include "ErrorCode.hpp"
@@ -244,5 +247,15 @@ template <typename T>
 constexpr typename std::underlying_type<T>::type enum_to_underlying_type(T enum_member) {
     return static_cast<typename std::underlying_type<T>::type>(enum_member);
 }
+
+/**
+ * Loads a lexer from a file
+ * @param schema_file_path 
+ * @param done 
+ * @param forward_lexer_ptr 
+ */
+void load_lexer_from_file (std::string schema_file_path, 
+                           bool done,
+                           log_surgeon::lexers::ByteLexer& forward_lexer_ptr);
 
 #endif // UTILS_HPP

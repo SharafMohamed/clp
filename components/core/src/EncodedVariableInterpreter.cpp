@@ -331,6 +331,7 @@ void EncodedVariableInterpreter::encode_and_add_to_dictionary (const string& mes
     }
 }
 
+/// TODO: this seems like its using id_symbol wrong
 bool EncodedVariableInterpreter::decode_variables_into_message (
                                             const LogTypeDictionaryEntry& logtype_dict_entry,
                                             const std::vector<VariableDictionaryReader>& var_dict,

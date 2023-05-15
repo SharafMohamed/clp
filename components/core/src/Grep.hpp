@@ -4,12 +4,14 @@
 // C++ libraries
 #include <string>
 
+// Log surgeon
+#include <log_surgeon/Lexer.hpp>
+
 // Project headers
 #include "Defs.h"
 #include "Query.hpp"
 #include "streaming_archive/reader/Archive.hpp"
 #include "streaming_archive/reader/File.hpp"
-#include "compressor_frontend/Lexer.hpp"
 
 class Grep {
 
@@ -36,9 +38,16 @@ public:
      * @param query
      * @return true if query may match messages, false otherwise
      */
-    static bool process_raw_query (const streaming_archive::reader::Archive& archive, const std::string& search_string, epochtime_t search_begin_ts,
-                                   epochtime_t search_end_ts, bool ignore_case, Query& query, log_surgeon::lexers::ByteLexer& forward_lexer,
-                                   log_surgeon::lexers::ByteLexer& reverse_lexer, bool use_heuristic, std::map<uint32_t, std::string>& id_symbol);
+    static bool process_raw_query (const streaming_archive::reader::Archive& archive, 
+                                   const std::string& search_string, 
+                                   epochtime_t search_begin_ts,
+                                   epochtime_t search_end_ts, 
+                                   bool ignore_case, 
+                                   Query& query, 
+                                   log_surgeon::lexers::ByteLexer& forward_lexer,
+                                   log_surgeon::lexers::ByteLexer& reverse_lexer, 
+                                   bool use_heuristic, 
+                                   std::unordered_map<uint32_t,std::string>& id_symbol);
 
     /**
      * Returns bounds of next potential variable (either a definite variable or a token with wildcards)
@@ -86,10 +95,10 @@ public:
      */
     static size_t search_and_output (const Query& query, size_t limit, streaming_archive::reader::Archive& archive,
                                      streaming_archive::reader::File& compressed_file, OutputFunc output_func, void* output_func_arg,
-                                     bool use_heuristic, std::map<uint32_t, std::string>& id_symbol);
+                                     bool use_heuristic, std::unordered_map<uint32_t, std::string>& id_symbol);
     static bool search_and_decompress (const Query& query, streaming_archive::reader::Archive& archive, streaming_archive::reader::File& compressed_file,
                                        streaming_archive::reader::Message& compressed_msg, std::string& decompressed_msg, bool use_heuristic,
-                                       std::map<uint32_t, std::string>& id_symbol);
+                                       std::unordered_map<uint32_t, std::string>& id_symbol);
     /**
      * Searches a file with the given query without outputting the results
      * @param query
@@ -101,7 +110,16 @@ public:
      * @throw TimestampPattern::OperationFailed if failed to insert timestamp into message
      */
     static size_t search (const Query& query, size_t limit, streaming_archive::reader::Archive& archive, streaming_archive::reader::File& compressed_file,
-                          bool use_heuristic, std::map<uint32_t, std::string>& id_symbol);
+                          bool use_heuristic, std::unordered_map<uint32_t, std::string>& id_symbol);
+};
+
+/**
+ * Wraps the tokens normally return from the log_surgeon lexer, and storing the variable ids of the
+ * tokens in a search query in a set. This allows for optimized search performance.
+ */
+class SearchToken : public log_surgeon::Token {
+public:
+    std::set<int> m_type_ids_set;
 };
 
 #endif // GREP_HPP

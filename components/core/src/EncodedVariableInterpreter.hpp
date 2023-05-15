@@ -1,5 +1,5 @@
-#ifndef ENCODEDVARIABLEINTERPRETER_HPP
-#define ENCODEDVARIABLEINTERPRETER_HPP
+#ifndef ENCODED_VARIABLE_INTERPRETER_HPP
+#define ENCODED_VARIABLE_INTERPRETER_HPP
 
 // C++ standard libraries
 #include <map>
@@ -143,4 +143,4 @@ private:
     static constexpr encoded_variable_t m_var_dict_id_range_end = (1ULL << 63) - 1;
 };
 
-#endif // ENCODEDVARIABLEINTERPRETER_HPP
+#endif // ENCODED_VARIABLE_INTERPRETER_HPP

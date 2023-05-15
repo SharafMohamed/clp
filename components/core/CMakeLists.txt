@@ -418,6 +418,7 @@ target_link_libraries(clg
         PRIVATE
         Boost::filesystem Boost::iostreams Boost::program_options
         fmt::fmt
+        log_surgeon::log_surgeon
         MariaDBClient::MariaDBClient
         spdlog::spdlog
         ${sqlite_LIBRARY_DEPENDENCIES}
@@ -537,6 +538,7 @@ target_link_libraries(clo
         PRIVATE
         Boost::filesystem Boost::iostreams Boost::program_options
         fmt::fmt
+        log_surgeon::log_surgeon
         msgpackc-cxx
         spdlog::spdlog
         ${sqlite_LIBRARY_DEPENDENCIES}
@@ -703,6 +705,7 @@ target_link_libraries(unitTest
         Boost::filesystem Boost::iostreams Boost::program_options
         fmt::fmt
         LibArchive::LibArchive
+        log_surgeon::log_surgeon
         MariaDBClient::MariaDBClient
         spdlog::spdlog
         ${sqlite_LIBRARY_DEPENDENCIES}

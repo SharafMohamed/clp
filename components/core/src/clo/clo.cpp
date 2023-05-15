@@ -17,7 +17,6 @@
 
 // Project headers
 #include "../Defs.h"
-#include "../compressor_frontend/utils.hpp"
 #include "../Grep.hpp"
 #include "../Profiler.hpp"
 #include "../networking/socket_utils.hpp"
@@ -27,7 +26,6 @@
 #include "ControllerMonitoringThread.hpp"
 
 using clo::CommandLineArguments;
-using log_surgeon::load_lexer_from_file;
 using std::cout;
 using std::cerr;
 using std::endl;
@@ -76,8 +74,11 @@ static ErrorCode send_result (const string& orig_file_path, const Message& compr
  * @return SearchFilesResult::ResultSendFailure on failure to send a result
  * @return SearchFilesResult::Success otherwise
  */
-static SearchFilesResult search_files (Query& query, Archive& archive, MetadataDB::FileIterator& file_metadata_ix,
-                                       const std::atomic_bool& query_cancelled, int controller_socket_fd, bool use_heuristic);
+static SearchFilesResult search_files (Query& query, Archive& archive, 
+                                       MetadataDB::FileIterator& file_metadata_ix,
+                                       const std::atomic_bool& query_cancelled, 
+                                       int controller_socket_fd, bool use_heuristic,
+                                       std::unordered_map<uint32_t, std::string>& id_symbol);
 /**
  * Searches an archive with the given path
  * @param command_line_args
@@ -142,8 +143,11 @@ static ErrorCode send_result (const string& orig_file_path, const Message& compr
     return networking::try_send(controller_socket_fd, m.data(), m.size());
 }
 
-static SearchFilesResult search_files (Query& query, Archive& archive, MetadataDB::FileIterator& file_metadata_ix,
-                                       const std::atomic_bool& query_cancelled, int controller_socket_fd, bool use_heuristic)
+static SearchFilesResult search_files (Query& query, Archive& archive, 
+                                       MetadataDB::FileIterator& file_metadata_ix,
+                                       const std::atomic_bool& query_cancelled,
+                                       int controller_socket_fd, bool use_heuristic,
+                                       std::unordered_map<uint32_t, std::string>& id_symbol)
 {
     SearchFilesResult result = SearchFilesResult::Success;
 
@@ -172,7 +176,8 @@ static SearchFilesResult search_files (Query& query, Archive& archive, MetadataD
             query.make_all_sub_queries_relevant();
         }
         while (false == query_cancelled &&
-               Grep::search_and_decompress(query, archive, compressed_file, compressed_message, decompressed_message, use_heuristic))
+               Grep::search_and_decompress(query, archive, compressed_file, compressed_message, 
+                                           decompressed_message, use_heuristic, id_symbol))
         {
             error_code = send_result(compressed_file.get_orig_path(), compressed_message, decompressed_message,
                                      controller_socket_fd);
@@ -207,6 +212,7 @@ static bool search_archive (const CommandLineArguments& command_line_args, const
     }
 
     // Load lexers from schema file if it exists
+    std::unordered_map<uint32_t, std::string> id_symbol;
     auto schema_file_path = archive_path / streaming_archive::cSchemaFileName;
     unique_ptr<log_surgeon::lexers::ByteLexer> forward_lexer, reverse_lexer;
     bool use_heuristic = true;
@@ -219,10 +225,13 @@ static bool search_archive (const CommandLineArguments& command_line_args, const
         // Create reverse lexer
         reverse_lexer.reset(new log_surgeon::lexers::ByteLexer());
         load_lexer_from_file(schema_file_path.string(), true, *reverse_lexer);
+        id_symbol = forward_lexer->m_id_symbol;
+    } else {
+        id_symbol[0] = "heuristic";
     }
 
-    Archive archive_reader;
-    archive_reader.open(archive_path.string());
+    Archive archive_reader(id_symbol);
+    archive_reader.open(archive_path.string(), id_symbol);
     archive_reader.refresh_dictionaries();
 
     auto search_begin_ts = command_line_args.get_search_begin_ts();
@@ -231,7 +240,7 @@ static bool search_archive (const CommandLineArguments& command_line_args, const
     Query query;
     if (false == Grep::process_raw_query(archive_reader, command_line_args.get_search_string(), search_begin_ts,
                                          search_end_ts, command_line_args.ignore_case(), query, *forward_lexer,
-                                         *reverse_lexer, use_heuristic))
+                                         *reverse_lexer, use_heuristic, id_symbol))
     {
         return true;
     }
@@ -249,7 +258,8 @@ static bool search_archive (const CommandLineArguments& command_line_args, const
     auto& file_metadata_ix = *file_metadata_ix_ptr;
     for (auto segment_id : ids_of_segments_to_search) {
         file_metadata_ix.set_segment_id(segment_id);
-        auto result = search_files(query, archive_reader, file_metadata_ix, query_cancelled, controller_socket_fd, use_heuristic);
+        auto result = search_files(query, archive_reader, file_metadata_ix, query_cancelled, 
+                                   controller_socket_fd, use_heuristic, id_symbol);
         if (SearchFilesResult::ResultSendFailure == result) {
             // Stop search now since results aren't reaching the controller
             break;

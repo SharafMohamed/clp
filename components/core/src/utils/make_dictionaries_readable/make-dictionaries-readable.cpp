@@ -9,8 +9,10 @@
 #include <spdlog/sinks/stdout_sinks.h>
 #include <spdlog/spdlog.h>
 
+// Log surgeon
+#include <log_surgeon/LogParser.hpp>
+
 // Project headers
-#include "../../compressor_frontend/LogParser.hpp"
 #include "../../FileWriter.hpp"
 #include "../../LogTypeDictionaryReader.hpp"
 #include "../../VariableDictionaryReader.hpp"
@@ -122,7 +124,7 @@ int main (int argc, const char* argv[]) {
 
     logtype_dict.close();
 
-    std::map<uint32_t, std::string> m_id_symbol;
+    std::unordered_map<uint32_t, std::string> m_id_symbol;
     if (use_heuristic) {
         m_id_symbol[0] = "heuristic";
     } else {

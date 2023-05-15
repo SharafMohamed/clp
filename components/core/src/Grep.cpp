@@ -3,8 +3,10 @@
 // C++ libraries
 #include <algorithm>
 
+// Log surgeon
+#include <log_surgeon/Constants.hpp>
+
 // Project headers
-#include "compressor_frontend/Constants.hpp"
 #include "EncodedVariableInterpreter.hpp"
 #include "QueryToken.hpp"
 #include "StringReader.hpp"
@@ -187,7 +189,7 @@ SubQueryMatchabilityResult generate_logtypes_and_vars_for_subquery (const Archiv
 
 bool Grep::process_raw_query (const Archive& archive, const string& search_string, epochtime_t search_begin_ts, epochtime_t search_end_ts, bool ignore_case,
                               Query& query, log_surgeon::lexers::ByteLexer& forward_lexer, log_surgeon::lexers::ByteLexer& reverse_lexer,
-                              bool use_heuristic, std::map<uint32_t, std::string>& id_symbol)
+                              bool use_heuristic, std::unordered_map<uint32_t, std::string>& id_symbol)
 {
     // Set properties which require no processing
     query.set_search_begin_timestamp(search_begin_ts);
@@ -520,34 +522,54 @@ bool Grep::get_bounds_of_next_potential_var (const string& value, size_t& begin_
                     break;
                 }
             }
-            log_surgeon::Token token;
+            SearchToken search_token;
             if (has_wildcard_in_middle || (has_prefix_wildcard && has_suffix_wildcard)) {
                 // DO NOTHING
             } else {
+                StringReader stringReader;
+                log_surgeon::Reader reader_wrapper{[&](char* buf, size_t count, size_t& read_to) -> log_surgeon::ErrorCode {
+                    stringReader.read(buf, count, read_to);
+                    if (read_to == 0) {
+                        return log_surgeon::ErrorCode::EndOfFile;
+                    }
+                    return log_surgeon::ErrorCode::Success;
+                }};
+                log_surgeon::ParserInputBuffer parser_input_buffer;
                 if (has_suffix_wildcard) { //text*
-                    StringReader stringReader;
+                    /// TODO: this is way to convoluted, can't you just set the string as the 
+                    /// buffer storage?
                     stringReader.open(value.substr(begin_pos, end_pos - begin_pos - 1));
-                    forward_lexer.reset(stringReader);
-                    token = forward_lexer.scan_with_wildcard(value[end_pos - 1]);
+                    parser_input_buffer.read_if_safe(reader_wrapper);
+                    forward_lexer.reset();
+                    forward_lexer.scan_with_wildcard(parser_input_buffer, 
+                                                     value[end_pos - 1],
+                                                     search_token);
                 } else if (has_prefix_wildcard) { // *text
                     std::string value_reverse = value.substr(begin_pos + 1, end_pos - begin_pos - 1);
                     std::reverse(value_reverse.begin(), value_reverse.end());
-                    StringReader stringReader;
                     stringReader.open(value_reverse);
-                    reverse_lexer.reset(stringReader);
-                    token = reverse_lexer.scan_with_wildcard(value[begin_pos]);
+                    parser_input_buffer.read_if_safe(reader_wrapper);
+                    reverse_lexer.reset();
+                    reverse_lexer.scan_with_wildcard(parser_input_buffer, 
+                                                     value[begin_pos],
+                                                     search_token);
                 } else { // no wildcards
-                    StringReader stringReader;
                     stringReader.open(value.substr(begin_pos, end_pos - begin_pos));
-                    forward_lexer.reset(stringReader);
-                    token = forward_lexer.scan();
-                    token.m_type_ids_set.insert(token.m_type_ids_ptr->at(0));
+                    parser_input_buffer.read_if_safe(reader_wrapper);
+                    forward_lexer.reset();
+                    forward_lexer.scan(parser_input_buffer, search_token);
+                    search_token.m_type_ids_set.insert(search_token.m_type_ids_ptr->at(0));
                 }
-                if (token.m_type_ids_set.find((int) log_surgeon::SymbolID::TokenUncaughtStringID) == token.m_type_ids_set.end() &&
-                    token.m_type_ids_set.find((int) log_surgeon::SymbolID::TokenEndID) == token.m_type_ids_set.end() ) {
+                if (search_token.m_type_ids_set.find((int) 
+                        log_surgeon::SymbolID::TokenUncaughtStringID) == 
+                        search_token.m_type_ids_set.end() &&
+                        search_token.m_type_ids_set.find((int) 
+                        log_surgeon::SymbolID::TokenEndID) == 
+                        search_token.m_type_ids_set.end()) 
+                {
                     is_var = true;
                 }
-                schema_types = token.m_type_ids_set;
+                schema_types = search_token.m_type_ids_set;
                 if (is_typed) {
                     if(schema_types.find(type_id) != schema_types.end()) {
                         schema_types.clear();
@@ -579,7 +601,7 @@ void Grep::calculate_sub_queries_relevant_to_file (const File& compressed_file, 
 }
 
 size_t Grep::search_and_output (const Query& query, size_t limit, Archive& archive, File& compressed_file, OutputFunc output_func, void* output_func_arg,
-                                bool use_heuristic, std::map<uint32_t, std::string>& id_symbol) {
+                                bool use_heuristic, std::unordered_map<uint32_t, std::string>& id_symbol) {
     size_t num_matches = 0;
 
     Message compressed_msg;
@@ -620,7 +642,7 @@ size_t Grep::search_and_output (const Query& query, size_t limit, Archive& archi
 }
 
 bool Grep::search_and_decompress (const Query& query, Archive& archive, File& compressed_file, Message& compressed_msg, string& decompressed_msg,
-                                  bool use_heuristic, std::map<uint32_t, std::string>& id_symbol) {
+                                  bool use_heuristic, std::unordered_map<uint32_t, std::string>& id_symbol) {
     const string& orig_file_path = compressed_file.get_orig_path();
 
     bool matched = false;
@@ -654,7 +676,7 @@ bool Grep::search_and_decompress (const Query& query, Archive& archive, File& co
     return true;
 }
 
-size_t Grep::search (const Query& query, size_t limit, Archive& archive, File& compressed_file, bool use_heuristic, std::map<uint32_t, std::string>& id_symbol) {
+size_t Grep::search (const Query& query, size_t limit, Archive& archive, File& compressed_file, bool use_heuristic, std::unordered_map<uint32_t, std::string>& id_symbol) {
     size_t num_matches = 0;
 
     Message compressed_msg;

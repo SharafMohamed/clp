@@ -262,22 +262,22 @@ TEST_CASE("EncodedVariableInterpreter", "[EncodedVariableInterpreter]") {
         REQUIRE(var_ids.size() == encoded_var_id_ix);
 
         // Open reader
-        VariableDictionaryReader var_dict_reader;
-        var_dict_reader.open(cVarDictPath, cVarSegmentIndexPath);
-        var_dict_reader.read_new_entries();
+        std::vector<VariableDictionaryReader> var_dict_readers;
+        var_dict_readers[0].open(cVarDictPath, cVarSegmentIndexPath);
+        var_dict_readers[0].read_new_entries();
 
         // Test searching
         string search_logtype = "here is a string with a small int ";
         SubQuery sub_query;
-        REQUIRE(EncodedVariableInterpreter::encode_and_search_dictionary(var_strs[0], var_dict_reader, false, search_logtype, sub_query));
+        REQUIRE(EncodedVariableInterpreter::encode_and_search_dictionary(var_strs[0], var_dict_readers, false, search_logtype, sub_query));
         search_logtype += " and a very large int ";
-        REQUIRE(EncodedVariableInterpreter::encode_and_search_dictionary(var_strs[1], var_dict_reader, false, search_logtype, sub_query));
+        REQUIRE(EncodedVariableInterpreter::encode_and_search_dictionary(var_strs[1], var_dict_readers, false, search_logtype, sub_query));
         search_logtype += " and a double ";
-        REQUIRE(EncodedVariableInterpreter::encode_and_search_dictionary(var_strs[2], var_dict_reader, false, search_logtype, sub_query));
+        REQUIRE(EncodedVariableInterpreter::encode_and_search_dictionary(var_strs[2], var_dict_readers, false, search_logtype, sub_query));
         search_logtype += " and a weird double ";
-        REQUIRE(EncodedVariableInterpreter::encode_and_search_dictionary(var_strs[3], var_dict_reader, false, search_logtype, sub_query));
+        REQUIRE(EncodedVariableInterpreter::encode_and_search_dictionary(var_strs[3], var_dict_readers, false, search_logtype, sub_query));
         search_logtype += " and a str with numbers ";
-        REQUIRE(EncodedVariableInterpreter::encode_and_search_dictionary(var_strs[4], var_dict_reader, false, search_logtype, sub_query));
+        REQUIRE(EncodedVariableInterpreter::encode_and_search_dictionary(var_strs[4], var_dict_readers, false, search_logtype, sub_query));
         auto& vars = sub_query.get_vars();
         REQUIRE(vars.size() == encoded_vars.size());
         for (size_t i = 0; i < vars.size(); ++i) {
@@ -285,16 +285,18 @@ TEST_CASE("EncodedVariableInterpreter", "[EncodedVariableInterpreter]") {
         }
 
         // Test search for unknown variable
-        REQUIRE(!EncodedVariableInterpreter::encode_and_search_dictionary("abc123", var_dict_reader, false, search_logtype, sub_query));
+        REQUIRE(!EncodedVariableInterpreter::encode_and_search_dictionary("abc123", var_dict_readers, false, search_logtype, sub_query));
 
         REQUIRE(logtype_dict_entry.get_value() == search_logtype);
 
         // Test decoding
         string decompressed_msg;
-        REQUIRE(EncodedVariableInterpreter::decode_variables_into_message(logtype_dict_entry, var_dict_reader, encoded_vars, decompressed_msg, true));
+        std::unordered_map<uint32_t, std::string> id_symbol;
+        id_symbol[0] = "heuristic";
+        REQUIRE(EncodedVariableInterpreter::decode_variables_into_message(logtype_dict_entry, var_dict_readers, encoded_vars, decompressed_msg, id_symbol));
         REQUIRE(msg == decompressed_msg);
 
-        var_dict_reader.close();
+        var_dict_readers[0].close();
 
         // Clean-up
         int retval = unlink(cVarDictPath);

@@ -9,9 +9,11 @@
 #include <spdlog/sinks/stdout_sinks.h>
 #include <spdlog/spdlog.h>
 
+// Log surgeon
+#include <log_surgeon/Lexer.hpp>
+
 // Project headers
 #include "../Defs.h"
-#include "../compressor_frontend/utils.hpp"
 #include "../Grep.hpp"
 #include "../GlobalMySQLMetadataDB.hpp"
 #include "../GlobalSQLiteMetadataDB.hpp"
@@ -20,7 +22,6 @@
 #include "CommandLineArguments.hpp"
 
 using clg::CommandLineArguments;
-using log_surgeon::load_lexer_from_file;
 using std::cout;
 using std::cerr;
 using std::endl;
@@ -63,8 +64,12 @@ static bool open_compressed_file (MetadataDB::FileIterator& file_metadata_ix, Ar
  * @param file_metadata_ix
  * @return The total number of matches found across all files
  */
-static size_t search_files (vector<Query>& queries, CommandLineArguments::OutputMethod output_method, Archive& archive,
-                            MetadataDB::FileIterator& file_metadata_ix, bool use_heuristic, std::map<uint32_t, std::string>& id_symbol);
+static size_t search_files (vector<Query>& queries, 
+                            CommandLineArguments::OutputMethod output_method, 
+                            Archive& archive,
+                            MetadataDB::FileIterator& file_metadata_ix, 
+                            bool use_heuristic, 
+                            std::unordered_map<uint32_t, std::string>& id_symbol);
 /**
  * Prints search result to stdout in text format
  * @param orig_file_path
@@ -98,9 +103,10 @@ static GlobalMetadataDB::ArchiveIterator* get_archive_iterator (GlobalMetadataDB
     }
 }
 
-static bool open_archive (const string& archive_path, Archive& archive_reader, std::map<uint32_t, std::string>& id_symbol) {
+static bool open_archive (const string& archive_path, 
+                          Archive& archive_reader, 
+                          std::unordered_map<uint32_t, std::string>& id_symbol) {
     ErrorCode error_code;
-
     try {
         // Open archive
         archive_reader.open(archive_path, id_symbol);
@@ -114,7 +120,6 @@ static bool open_archive (const string& archive_path, Archive& archive_reader, s
             return false;
         }
     }
-
     try {
         archive_reader.refresh_dictionaries();
     } catch (TraceableException& e) {
@@ -127,13 +132,12 @@ static bool open_archive (const string& archive_path, Archive& archive_reader, s
             return false;
         }
     }
-
     return true;
 }
 
 static bool search (const vector<string>& search_strings, CommandLineArguments& command_line_args, Archive& archive,
                     log_surgeon::lexers::ByteLexer& forward_lexer, log_surgeon::lexers::ByteLexer& reverse_lexer, bool use_heuristic,
-                    std::map<uint32_t, std::string>& id_symbol) {
+                    std::unordered_map<uint32_t, std::string>& id_symbol) {
     ErrorCode error_code;
     auto search_begin_ts = command_line_args.get_search_begin_ts();
     auto search_end_ts = command_line_args.get_search_end_ts();
@@ -217,8 +221,12 @@ static bool open_compressed_file (MetadataDB::FileIterator& file_metadata_ix, Ar
     return false;
 }
 
-static size_t search_files (vector<Query>& queries, const CommandLineArguments::OutputMethod output_method, Archive& archive,
-                            MetadataDB::FileIterator& file_metadata_ix, bool use_heuristic, std::map<uint32_t, std::string>& id_symbol)
+static size_t search_files (vector<Query>& queries, 
+                            const CommandLineArguments::OutputMethod output_method, 
+                            Archive& archive,
+                            MetadataDB::FileIterator& file_metadata_ix, 
+                            bool use_heuristic, 
+                            std::unordered_map<uint32_t, std::string>& id_symbol)
 {
     size_t num_matches = 0;
 
@@ -408,7 +416,7 @@ int main (int argc, const char* argv[]) {
         }
         
         // Generate lexer if schema file exists
-        std::map<uint32_t, std::string> id_symbol;
+        std::unordered_map<uint32_t, std::string> id_symbol;
         auto schema_file_path = archive_path / streaming_archive::cSchemaFileName;
         bool use_heuristic = true;
         if (std::filesystem::exists(schema_file_path)) {

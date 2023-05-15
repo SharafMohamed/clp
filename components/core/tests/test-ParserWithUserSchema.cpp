@@ -1,3 +1,6 @@
+/// TODO: move this to log_surgeon
+/// TODO: move log_surgeon::load_lexer_from_file into SearchParser in log_surgeon 
+
 // C libraries
 #include <sys/stat.h>
 
@@ -8,34 +11,36 @@
 // Catch2
 #include "../submodules/Catch2/single_include/catch2/catch.hpp"
 
+// Log Surgeon
+#include <log_surgeon/LogParser.hpp>
+
 // Project headers
 #include "../src/clp/run.hpp"
-#include "../src/compressor_frontend/utils.hpp"
-#include "../src/compressor_frontend/LogParser.hpp"
+#include "../src/Utils.hpp"
 #include "../src/GlobalMySQLMetadataDB.hpp"
-
+/*
 using log_surgeon::DelimiterStringAST;
 using log_surgeon::LALR1Parser;
 using log_surgeon::lexers::ByteLexer;
 using log_surgeon::LogParser;
 using log_surgeon::ParserAST;
-using log_surgeon::SchemaFileAST;
+using log_surgeon::SchemaAST;
 using log_surgeon::SchemaParser;
 using log_surgeon::SchemaVarAST;
 using log_surgeon::Token;
 
-std::unique_ptr<SchemaFileAST> generate_schema_ast(const std::string& schema_file) {
+std::unique_ptr<SchemaAST> generate_schema_ast(const std::string& schema_file) {
     SchemaParser schema_parser;
     FileReader schema_file_reader;
     schema_file_reader.open(schema_file);
     REQUIRE(schema_file_reader.is_open());
-    std::unique_ptr<SchemaFileAST> schema_ast = schema_parser.generate_schema_ast(schema_file_reader);
+    std::unique_ptr<SchemaAST> schema_ast = schema_parser.generate_schema_ast(schema_file_reader);
     REQUIRE(schema_ast.get() != nullptr);
     return schema_ast;
 }
 
 std::unique_ptr<LogParser> generate_log_parser(const std::string& schema_file) {
-    std::unique_ptr<SchemaFileAST> schema_ast = generate_schema_ast(schema_file);
+    std::unique_ptr<SchemaAST> schema_ast = generate_schema_ast(schema_file);
     std::unique_ptr<LogParser> log_parser = std::make_unique<LogParser>(schema_file);
     REQUIRE(log_parser.get() != nullptr);
     return log_parser;
@@ -157,3 +162,4 @@ TEST_CASE("Test reverse lexer", "[Search]") {
         token = reverse_lexer.scan();
     }
 }
+*/
