@@ -31,6 +31,10 @@ namespace compressor_frontend {
         lexer.m_symbol_id[cTokenFloat] = (int) SymbolID::TokenFloatId;
         lexer.m_symbol_id[cTokenFirstTimestamp] = (int) SymbolID::TokenFirstTimestampId;
         lexer.m_symbol_id[cTokenNewlineTimestamp] = (int) SymbolID::TokenNewlineTimestampId;
+        lexer.m_symbol_id[cTokenFirstRelativeTimestamp] = 
+                (int) SymbolID::TokenFirstRelativeTimestampId;
+        lexer.m_symbol_id[cTokenNewlineRelativeTimestamp] = 
+                (int) SymbolID::TokenNewlineRelativeTimestampId;
         lexer.m_symbol_id[cTokenNewline] = (int) SymbolID::TokenNewlineId;
 
         lexer.m_id_symbol[(int) SymbolID::TokenEndID] = cTokenEnd;
@@ -39,6 +43,10 @@ namespace compressor_frontend {
         lexer.m_id_symbol[(int) SymbolID::TokenFloatId] = cTokenFloat;
         lexer.m_id_symbol[(int) SymbolID::TokenFirstTimestampId] = cTokenFirstTimestamp;
         lexer.m_id_symbol[(int) SymbolID::TokenNewlineTimestampId] = cTokenNewlineTimestamp;
+        lexer.m_id_symbol[(int) SymbolID::TokenFirstRelativeTimestampId] = 
+                cTokenFirstRelativeTimestamp;
+        lexer.m_id_symbol[(int) SymbolID::TokenNewlineRelativeTimestampId] = 
+                cTokenNewlineRelativeTimestamp;
         lexer.m_id_symbol[(int) SymbolID::TokenNewlineId] = cTokenNewline;
 
         /// TODO: figure out why this needs to be specially added

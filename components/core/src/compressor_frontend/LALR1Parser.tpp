@@ -41,6 +41,8 @@ namespace compressor_frontend {
         m_lexer.m_symbol_id[cTokenFloat] = (int) SymbolID::TokenFloatId;
         m_lexer.m_symbol_id[cTokenFirstTimestamp] = (int) SymbolID::TokenFirstTimestampId;
         m_lexer.m_symbol_id[cTokenNewlineTimestamp] = (int) SymbolID::TokenNewlineTimestampId;
+        m_lexer.m_symbol_id[cTokenFirstRelativeTimestamp] = (int) SymbolID::TokenFirstRelativeTimestampId;
+        m_lexer.m_symbol_id[cTokenNewlineRelativeTimestamp] = (int) SymbolID::TokenNewlineRelativeTimestampId;
         m_lexer.m_symbol_id[cTokenNewline] = (int) SymbolID::TokenNewlineId;
 
         m_lexer.m_id_symbol[(int) SymbolID::TokenEndID] = cTokenEnd;
@@ -49,6 +51,8 @@ namespace compressor_frontend {
         m_lexer.m_id_symbol[(int) SymbolID::TokenFloatId] = cTokenFloat;
         m_lexer.m_id_symbol[(int) SymbolID::TokenFirstTimestampId] = cTokenFirstTimestamp;
         m_lexer.m_id_symbol[(int) SymbolID::TokenNewlineTimestampId] = cTokenNewlineTimestamp;
+        m_lexer.m_id_symbol[(int) SymbolID::TokenFirstRelativeTimestampId] = cTokenFirstRelativeTimestamp;
+        m_lexer.m_id_symbol[(int) SymbolID::TokenNewlineRelativeTimestampId] = cTokenNewlineRelativeTimestamp;
         m_lexer.m_id_symbol[(int) SymbolID::TokenNewlineId] = cTokenNewline;
 
         m_terminals.insert((int) SymbolID::TokenEndID);
@@ -57,6 +61,8 @@ namespace compressor_frontend {
         m_terminals.insert((int) SymbolID::TokenFloatId);
         m_terminals.insert((int) SymbolID::TokenFirstTimestampId);
         m_terminals.insert((int) SymbolID::TokenNewlineTimestampId);
+        m_terminals.insert((int) SymbolID::TokenFirstRelativeTimestampId);
+        m_terminals.insert((int) SymbolID::TokenNewlineRelativeTimestampId);
         m_terminals.insert((int) SymbolID::TokenNewlineId);
     }
 

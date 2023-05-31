@@ -54,7 +54,10 @@ public:
 
     // Constructors
     TimestampPattern () : m_num_spaces_before_ts(0) {}
-    TimestampPattern (uint8_t num_spaces_before_ts, const std::string& format) : m_num_spaces_before_ts(num_spaces_before_ts), m_format(format) {}
+    TimestampPattern (uint8_t num_spaces_before_ts, const std::string& format, 
+                      bool is_relative = false) : 
+        m_num_spaces_before_ts(num_spaces_before_ts), m_format(format), 
+        m_is_relative(is_relative) {}
 
     // Methods
     /**
@@ -136,6 +139,8 @@ private:
     //                   ^ ^ ^
     uint8_t m_num_spaces_before_ts;
     std::string m_format;
+    // If the timestamps in the log are in some unit of time relative to the log creation
+    bool m_is_relative;
 };
 
 #endif // TIMESTAMPPATTERN_HPP

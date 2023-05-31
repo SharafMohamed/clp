@@ -54,13 +54,22 @@ namespace compressor_frontend {
 
             // transform '.' from any-character into any non-delimiter character
             rule->m_regex_ptr->remove_delimiters_from_wildcard(delimiters);
-
+            /// TODO: combine the below 2 if statements into 1
             if (rule->m_name == "timestamp") {
                 unique_ptr<RegexAST<RegexNFAByteState>> first_timestamp_regex_ast(rule->m_regex_ptr->clone());
                 add_rule("firstTimestamp", std::move(first_timestamp_regex_ast));
                 unique_ptr<RegexAST<RegexNFAByteState>> newline_timestamp_regex_ast(rule->m_regex_ptr->clone());
-                unique_ptr<RegexASTLiteral<RegexNFAByteState>> r2 = make_unique<RegexASTLiteral<RegexNFAByteState>>('\n');
-                add_rule("newLineTimestamp", make_unique<RegexASTCat<RegexNFAByteState>>(std::move(r2), std::move(newline_timestamp_regex_ast)));
+                unique_ptr<RegexASTLiteral<RegexNFAByteState>> newline = make_unique<RegexASTLiteral<RegexNFAByteState>>('\n');
+                add_rule("newLineTimestamp", make_unique<RegexASTCat<RegexNFAByteState>>(std::move(newline), std::move(newline_timestamp_regex_ast)));
+                // prevent timestamps from going into the dictionary
+                continue;
+            }
+            if (rule->m_name == "relativeTimestamp") {
+                unique_ptr<RegexAST<RegexNFAByteState>> first_relative_timestamp_regex_ast(rule->m_regex_ptr->clone());
+                add_rule("firstRelativeTimestamp", std::move(first_relative_timestamp_regex_ast));
+                unique_ptr<RegexAST<RegexNFAByteState>> newline_timestamp_regex_ast(rule->m_regex_ptr->clone());
+                unique_ptr<RegexASTLiteral<RegexNFAByteState>> newline = make_unique<RegexASTLiteral<RegexNFAByteState>>('\n');
+                add_rule("newLineRelativeTimestamp", make_unique<RegexASTCat<RegexNFAByteState>>(std::move(newline), std::move(newline_timestamp_regex_ast)));
                 // prevent timestamps from going into the dictionary
                 continue;
             }
@@ -151,7 +160,8 @@ namespace compressor_frontend {
         if (m_active_uncompressed_msg[0].m_type_ids->at(0) == (int) SymbolID::TokenEndID) {
             return;
         }
-        if (m_active_uncompressed_msg[0].m_type_ids->at(0) == (int) SymbolID::TokenFirstTimestampId) {
+        if (m_active_uncompressed_msg[0].m_type_ids->at(0) == (int) SymbolID::TokenFirstTimestampId ||
+            m_active_uncompressed_msg[0].m_type_ids->at(0) == (int) SymbolID::TokenFirstRelativeTimestampId ) {
             has_timestamp = true;
             increment_uncompressed_msg_pos(reader);
         } else {
@@ -196,7 +206,8 @@ namespace compressor_frontend {
                                                              m_lexer.get_has_delimiters(), has_timestamp);
                 // switch to timestamped messages if a timestamp is ever found at the start of line (potentially dangerous as it never switches back)
                 /// TODO: potentially switch back if a new line is reached and the message is too long (100x static message size)
-                if (token_type == (int) SymbolID::TokenNewlineTimestampId) {
+                if (token_type == (int) SymbolID::TokenNewlineTimestampId || 
+                    token_type == (int) SymbolID::TokenNewlineRelativeTimestampId ) {
                     has_timestamp = true;
                 }
                 if (has_timestamp) {

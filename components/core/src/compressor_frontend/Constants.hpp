@@ -19,6 +19,8 @@ namespace compressor_frontend {
         TokenFloatId,
         TokenFirstTimestampId,
         TokenNewlineTimestampId,
+        TokenFirstRelativeTimestampId,
+        TokenNewlineRelativeTimestampId,
         TokenNewlineId
     };
 
@@ -28,6 +30,8 @@ namespace compressor_frontend {
     constexpr char cTokenFloat[] = "float";
     constexpr char cTokenFirstTimestamp[] = "firstTimestamp";
     constexpr char cTokenNewlineTimestamp[] = "newLineTimestamp";
+    constexpr char cTokenFirstRelativeTimestamp[] = "firstRelativeTimestamp";
+    constexpr char cTokenNewlineRelativeTimestamp[] = "newLineRelativeTimestamp";
     constexpr char cTokenNewline[] = "newLine";
     
     constexpr uint32_t cStaticByteBuffSize = 60000;

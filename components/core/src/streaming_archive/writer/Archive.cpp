@@ -25,6 +25,7 @@
 #include "../../EncodedVariableInterpreter.hpp"
 #include "../../Utils.hpp"
 #include "../Constants.hpp"
+#include "../../compressor_frontend/Constants.hpp"
 #include "../../compressor_frontend/LogParser.hpp"
 
 using std::list;
@@ -285,13 +286,32 @@ namespace streaming_archive::writer {
         epochtime_t timestamp = 0;
         TimestampPattern* timestamp_pattern = nullptr;
         if (has_timestamp) {
-            size_t start;
-            size_t end;
-            timestamp_pattern = (TimestampPattern*) TimestampPattern::search_known_ts_patterns(
-                    uncompressed_msg[0].get_string(), timestamp, start, end);
-            if (old_ts_pattern != *timestamp_pattern) {
+            if(uncompressed_msg[0].m_type_ids->at(0) == 
+                (int) compressor_frontend::SymbolID::TokenFirstRelativeTimestampId ||
+                uncompressed_msg[0].m_type_ids->at(0) == 
+                (int) compressor_frontend::SymbolID::TokenNewlineRelativeTimestampId ) {
+                timestamp_pattern = &m_relative_ts_pattern;
+                try {
+                    timestamp = stoi(uncompressed_msg[0].get_string());
+                /// TODO: change this function to return true and false based on errors 
+                } catch (const std::invalid_argument& ia) {
+                    SPDLOG_ERROR("Log has relative timestamp that is not an integer: {ia.what()}");
+                    /// TODO: can probably check to prevent this when parsing schema file
+                    return;
+                } catch (const std::out_of_range& oar) {
+                    SPDLOG_ERROR("Log has relative timestamp that is out of range: {oar.what()}");
+                    /// TODO: the best option here might be to round instead of crash 
+                    return;
+                }
+            } else {
+                size_t start;
+                size_t end;
+                timestamp_pattern = (TimestampPattern*)TimestampPattern::search_known_ts_patterns(
+                        uncompressed_msg[0].get_string(), timestamp, start, end);
+            }
+            if (m_old_ts_pattern != *timestamp_pattern) {
                 change_ts_pattern(timestamp_pattern);
-                old_ts_pattern = *timestamp_pattern;
+                m_old_ts_pattern = *timestamp_pattern;
             }
             assert(nullptr != timestamp_pattern);
         }

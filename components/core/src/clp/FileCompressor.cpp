@@ -141,7 +141,7 @@ namespace clp {
         // very awkward to combine sources to/in the parser
         reader.seek_from_begin(0);
         m_log_parser->set_archive_writer_ptr(&archive_writer);
-        m_log_parser->get_archive_writer_ptr()->old_ts_pattern.clear();
+        m_log_parser->get_archive_writer_ptr()->m_old_ts_pattern.clear();
         try {
             m_log_parser->parse(reader);
         } catch (std::string const err) {
