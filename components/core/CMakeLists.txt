@@ -51,7 +51,7 @@ endif()
 set(log_surgeon_DIR "/home/sharaf/.local/lib/cmake/log_surgeon/")
 find_package(log_surgeon REQUIRED)
 if(log_surgeon_FOUND)
-    message(STATUS "Found spdlog ${log_surgeon_VERSION}")
+    message(STATUS "Found log_surgeon ${log_surgeon_VERSION}")
 else()
     message(FATAL_ERROR "Could not find static libraries for log_surgeon")
 endif()
@@ -287,6 +287,8 @@ set(SOURCE_FILES_clp
         src/string_utils.hpp
         src/StringReader.cpp
         src/StringReader.hpp
+        src/TimeFormatFileParser.cpp
+        src/TimeFormatFileParser.hpp
         src/TimestampPattern.cpp
         src/TimestampPattern.hpp
         src/TraceableException.cpp
@@ -418,6 +420,8 @@ set(SOURCE_FILES_clg
         src/string_utils.hpp
         src/StringReader.cpp
         src/StringReader.hpp
+        src/TimeFormatFileParser.cpp
+        src/TimeFormatFileParser.hpp
         src/TimestampPattern.cpp
         src/TimestampPattern.hpp
         src/TraceableException.cpp
@@ -542,6 +546,8 @@ set(SOURCE_FILES_clo
         src/StringReader.hpp
         src/Thread.cpp
         src/Thread.hpp
+        src/TimeFormatFileParser.cpp
+        src/TimeFormatFileParser.hpp
         src/TimestampPattern.cpp
         src/TimestampPattern.hpp
         src/TraceableException.cpp
@@ -725,6 +731,8 @@ set(SOURCE_FILES_unitTest
         src/string_utils.tpp
         src/StringReader.cpp
         src/StringReader.hpp
+        src/TimeFormatFileParser.cpp
+        src/TimeFormatFileParser.hpp
         src/TimestampPattern.cpp
         src/TimestampPattern.hpp
         src/TraceableException.cpp

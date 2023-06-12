@@ -1,0 +1,59 @@
+# E.g. 2015-01-31T15:50:45.392
+0:%Y-%m-%dT%H:%M:%S.%3
+# E.g. 2015-01-31T15:50:45,392
+0:%Y-%m-%dT%H:%M:%S,%3
+# E.g. [2015-01-31T15:50:45
+0:[%Y-%m-%dT%H:%M:%S
+# E.g. [20170106-16:56:41]
+0:[%Y%m%d-%H:%M:%S]
+# E.g. 2015-01-31 15:50:45,392
+0:"%Y-%m-%d %H:%M:%S,%3
+# E.g. 2015-01-31 15:50:45.392
+0:%Y-%m-%d %H:%M:%S.%3
+# E.g. [2015-01-31 15:50:45,085]
+0:[%Y-%m-%d %H:%M:%S,%3]
+# E.g. 2015-01-31 15:50:45
+0:%Y-%m-%d %H:%M:%S
+# E.g. Start-Date: 2015-01-31  15:50:45
+1:%Y-%m-%d  %H:%M:%S
+# E.g. 2015/01/31 15:50:45
+0:%Y/%m/%d %H:%M:%S
+# E.g. 15/01/31 15:50:45
+0:%y/%m/%d %H:%M:%S
+# E.g. 150131  9:50:45
+0:%y%m%d %k:%M:%S
+# E.g. 01 Jan 2016 15:50:17,085
+0:%d %b %Y %H:%M:%S,%3
+# E.g. Jan 01, 2016 3:50:17 PM
+0:%b %d, %Y %l:%M:%S %p
+# E.g. January 31, 2015 15:50
+0:%B %d, %Y %H:%M
+# E.g. E [31/Jan/2015:15:50:45
+1:[%d/%b/%Y:%H:%M:%S
+# E.g. localhost - - [01/Jan/2016:15:50:17
+# E.g. 192.168.4.5 - - [01/Jan/2016:15:50:17
+3:[%d/%b/%Y:%H:%M:%S
+# E.g. 192.168.4.5 - - [01/01/2016:15:50:17
+3:[%d/%m/%Y:%H:%M:%S
+# E.g. INFO [main] 2015-01-31 15:50:45,085
+2:%Y-%m-%d %H:%M:%S,%3
+# E.g. Started POST "/api/v3/internal/allowed" for 127.0.0.1 at 2017-06-18 00:20:44
+6:%Y-%m-%d %H:%M:%S
+# E.g. update-alternatives 2015-01-31 15:50:45
+1:%Y-%m-%d %H:%M:%S
+# E.g. ERROR: apport (pid 4557) Sun Jan  1 15:50:45 2015
+4:%a %b %e %H:%M:%S %Y
+# E.g. <<<2016-11-10 03:02:29:936
+0:<<<%Y-%m-%d %H:%M:%S:%3
+
+# TODO These patterns are imprecise and will prevent searching by timestamp; but for now, it's no worse than not parsing a timestamp
+# E.g. Jan 21 11:56:42
+0:%b %d %H:%M:%S
+# E.g. 01-21 11:56:42.392
+0:%m-%d %H:%M:%S.%3
+# E.g. 925123679
+0:%rn
+# E.g. 925123679ns
+0:%rnns
+# This is not allowed: 0:%rs:%3 E.g. 925:913
+# This is not allowed: 0:%rs913 E.g. 925913
