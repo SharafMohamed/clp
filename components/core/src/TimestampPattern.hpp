@@ -5,6 +5,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <memory>
+#include <vector>
 
 // Project headers
 #include "Defs.h"
@@ -54,13 +55,16 @@ public:
 
     // Constructors
     TimestampPattern () : m_num_spaces_before_ts(0) {}
-    TimestampPattern (uint8_t num_spaces_before_ts, const std::string& format) : m_num_spaces_before_ts(num_spaces_before_ts), m_format(format) {}
+    TimestampPattern (uint8_t num_spaces_before_ts, const std::string& format, 
+                      const std::string& regex) : 
+            m_num_spaces_before_ts(num_spaces_before_ts), m_format(format), m_regex(regex) {}
 
     // Methods
     /**
      * Static initializer for class. This must be called before using the class.
+     * @param patterns 
      */
-    static void init ();
+    static void init (std::vector<TimestampPattern>& patterns);
 
     /**
      * Searches for a known timestamp pattern which can parse the timestamp from the given line, and if found, parses the timestamp
@@ -73,6 +77,12 @@ public:
     static const TimestampPattern* search_known_ts_patterns (const std::string& line, epochtime_t& timestamp, size_t& timestamp_begin_pos,
                                                              size_t& timestamp_end_pos);
 
+    /**
+     * Gets the timestamp pattern's regex string
+     * @return See description
+     */
+    const std::string& get_regex () const;
+    
     /**
      * Gets the timestamp pattern's format string
      * @return See description
@@ -136,6 +146,7 @@ private:
     //                   ^ ^ ^
     uint8_t m_num_spaces_before_ts;
     std::string m_format;
+    std::string m_regex;
 };
 
 #endif // TIMESTAMPPATTERN_HPP

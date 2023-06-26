@@ -12,6 +12,7 @@
 
 // Project headers
 #include "../Profiler.hpp"
+#include "../TimestampPatternsFileParser.hpp"
 #include "../Utils.hpp"
 #include "CommandLineArguments.hpp"
 #include "compression.hpp"
@@ -35,8 +36,7 @@ namespace clp {
             return -1;
         }
         Profiler::init();
-        TimestampPattern::init();
-
+        
         clp::CommandLineArguments command_line_args("clp");
         auto parsing_result = command_line_args.parse_arguments(argc, argv);
         switch (parsing_result) {
@@ -48,7 +48,13 @@ namespace clp {
                 // Continue processing
                 break;
         }
-
+        
+        const std::string& ts_patterns_file_path =
+                command_line_args.get_ts_patterns_file_path();
+        std::vector<TimestampPattern> timestamp_patterns =
+                TimestampPatternsFileParser::try_timestamp_patterns_file(ts_patterns_file_path);
+        TimestampPattern::init(timestamp_patterns);
+        
         vector<string> input_paths = command_line_args.get_input_paths();
 
         Profiler::start_continuous_measurement<Profiler::ContinuousMeasurementIndex::Compression>();
@@ -65,7 +71,12 @@ namespace clp {
             std::unique_ptr<log_surgeon::ReaderParser> reader_parser;
             if (!command_line_args.get_use_heuristic()) {
                 const std::string& schema_file_path = command_line_args.get_schema_file_path();
-                reader_parser = std::make_unique<log_surgeon::ReaderParser>(schema_file_path);
+                log_surgeon::Schema schema(schema_file_path);
+                // TODO: give an error if timestamp is specified in schema file 
+                for(TimestampPattern timestamp_pattern : timestamp_patterns) {
+                    schema.add_variable("timestamp", timestamp_pattern.get_regex(), 0);
+                }
+                reader_parser = std::make_unique<log_surgeon::ReaderParser>(schema);
             }
 
             boost::filesystem::path path_prefix_to_remove(command_line_args.get_path_prefix_to_remove());

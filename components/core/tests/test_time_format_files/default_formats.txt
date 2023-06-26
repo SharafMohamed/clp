@@ -51,9 +51,11 @@
 0:%b %d %H:%M:%S
 # E.g. 01-21 11:56:42.392
 0:%m-%d %H:%M:%S.%3
-# E.g. 925123679
-0:%rn
-# E.g. 925123679ns
-0:%rnns
+# E.g. 3661999
+0:%r
+# E.g. 3661999ms
+0:%rms
+# E.g. INFO [main] 3661999ms
+2:%rms
 # This is not allowed: 0:%rs:%3 E.g. 925:913
 # This is not allowed: 0:%rs913 E.g. 925913

@@ -161,6 +161,7 @@ namespace clp {
                 po::options_description extraction_positional_options;
                 extraction_positional_options.add_options()
                         ("archives-dir", po::value<string>(&m_archives_dir))
+                        ("ts-file-path", po::value<string>(&m_ts_patterns_file_path))
                         ("output-dir", po::value<string>(&m_output_dir))
                         ("paths", po::value< vector<string> >(&m_input_paths)->composing())
                         ;
@@ -208,10 +209,12 @@ namespace clp {
                 // Define compression hidden positional options
                 po::options_description compression_positional_options;
                 compression_positional_options.add_options()
+                        ("ts-file-path", po::value<string>(&m_ts_patterns_file_path))
                         ("output-dir", po::value<string>(&m_output_dir))
                         ("input-paths", po::value< vector<string> >(&m_input_paths)->composing())
                         ;
                 po::positional_options_description compression_positional_options_description;
+                compression_positional_options_description.add("ts-file-path", 1);
                 compression_positional_options_description.add("output-dir", 1);
                 compression_positional_options_description.add("input-paths", -1);
 
@@ -257,7 +260,7 @@ namespace clp {
 
                     cerr << "Examples:" << endl;
                     cerr << "  # Compress file1.txt and dir1 into the output dir" << endl;
-                    cerr << "  " << get_program_name() << " c output-dir file1.txt dir1" << endl;
+                    cerr << "  " << get_program_name() << " c ts-file-path output-dir file1.txt dir1" << endl;
                     cerr << endl;
 
                     po::options_description visible_options;
@@ -302,7 +305,19 @@ namespace clp {
                     }
                 }
             }
-
+            // Validate timestamp patterns file  
+            if (m_ts_patterns_file_path.empty()) {
+                throw invalid_argument("Timestamp file (ts-file-path) not specified or empty.");
+            }
+            if (false == boost::filesystem::exists(m_ts_patterns_file_path)) {
+                throw invalid_argument("Specified timestamp file (ts-file-path) '" +
+                m_ts_patterns_file_path + "' does not exist.");
+            }
+            if (false == boost::filesystem::is_regular_file(m_ts_patterns_file_path)) {
+                throw invalid_argument("Specified timestamp file (ts-file-path) '" +
+                m_ts_patterns_file_path + "' is not a regular file.");
+            }
+            
             // Validate an output directory was specified
             if (m_output_dir.empty()) {
                 throw invalid_argument("output-dir not specified or empty.");

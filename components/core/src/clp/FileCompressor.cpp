@@ -91,7 +91,7 @@ namespace clp {
                                         size_t target_encoded_file_size, const FileToCompress& file_to_compress,
                                         streaming_archive::writer::Archive& archive_writer, bool use_heuristic) {
         std::string file_name = std::filesystem::canonical(file_to_compress.get_path()).string();
-
+        SPDLOG_INFO("Start parsing {}", file_name);
         PROFILER_SPDLOG_INFO("Start parsing {}", file_name)
         Profiler::start_continuous_measurement<Profiler::ContinuousMeasurementIndex::ParseLogFile>();
 
@@ -131,6 +131,7 @@ namespace clp {
         Profiler::stop_continuous_measurement<Profiler::ContinuousMeasurementIndex::ParseLogFile>();
         LOG_CONTINUOUS_MEASUREMENT(Profiler::ContinuousMeasurementIndex::ParseLogFile)
         PROFILER_SPDLOG_INFO("Done parsing {}", file_name)
+        SPDLOG_INFO("Done parsing {}", file_name);
 
         return succeeded;
     }

@@ -287,8 +287,8 @@ set(SOURCE_FILES_clp
         src/string_utils.hpp
         src/StringReader.cpp
         src/StringReader.hpp
-        src/TimeFormatFileParser.cpp
-        src/TimeFormatFileParser.hpp
+        src/TimestampPatternsFileParser.cpp
+        src/TimestampPatternsFileParser.hpp
         src/TimestampPattern.cpp
         src/TimestampPattern.hpp
         src/TraceableException.cpp
@@ -420,8 +420,8 @@ set(SOURCE_FILES_clg
         src/string_utils.hpp
         src/StringReader.cpp
         src/StringReader.hpp
-        src/TimeFormatFileParser.cpp
-        src/TimeFormatFileParser.hpp
+        src/TimestampPatternsFileParser.cpp
+        src/TimestampPatternsFileParser.hpp
         src/TimestampPattern.cpp
         src/TimestampPattern.hpp
         src/TraceableException.cpp
@@ -546,8 +546,8 @@ set(SOURCE_FILES_clo
         src/StringReader.hpp
         src/Thread.cpp
         src/Thread.hpp
-        src/TimeFormatFileParser.cpp
-        src/TimeFormatFileParser.hpp
+        src/TimestampPatternsFileParser.cpp
+        src/TimestampPatternsFileParser.hpp
         src/TimestampPattern.cpp
         src/TimestampPattern.hpp
         src/TraceableException.cpp
@@ -731,8 +731,8 @@ set(SOURCE_FILES_unitTest
         src/string_utils.tpp
         src/StringReader.cpp
         src/StringReader.hpp
-        src/TimeFormatFileParser.cpp
-        src/TimeFormatFileParser.hpp
+        src/TimestampPatternsFileParser.cpp
+        src/TimestampPatternsFileParser.hpp
         src/TimestampPattern.cpp
         src/TimestampPattern.hpp
         src/TraceableException.cpp

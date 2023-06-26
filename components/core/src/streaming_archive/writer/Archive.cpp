@@ -292,8 +292,7 @@ namespace streaming_archive::writer {
             size_t start;
             size_t end;
             timestamp_pattern = (TimestampPattern*) TimestampPattern::search_known_ts_patterns(
-                    log_view.get_log_output_buffer()->get_mutable_token(0).to_string(), timestamp, 
-                    start, end);
+                    log_view.get_timestamp()->to_string(), timestamp, start, end);
             if (m_old_ts_pattern != *timestamp_pattern) {
                 change_ts_pattern(timestamp_pattern);
                 m_old_ts_pattern = *timestamp_pattern;

@@ -69,7 +69,7 @@ namespace streaming_archive::reader {
             m_timestamp_patterns.emplace_back(
                     std::piecewise_construct,
                     std::forward_as_tuple(msg_num),
-                    forward_as_tuple(num_spaces_before_ts, timestamp_format));
+                    forward_as_tuple(num_spaces_before_ts, timestamp_format, ""));
         }
 
         m_num_messages = file_metadata_ix.get_num_messages();

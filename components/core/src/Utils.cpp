@@ -243,21 +243,21 @@ void load_lexer_from_file (std::string schema_file_path,
     lexer.m_symbol_id[log_surgeon::cTokenEnd] = (int) log_surgeon::SymbolID::TokenEndID;
     lexer.m_symbol_id[log_surgeon::cTokenUncaughtString] =
             (int) log_surgeon::SymbolID::TokenUncaughtStringID;
-    lexer.m_symbol_id[log_surgeon::cTokenInt] = (int) log_surgeon::SymbolID::TokenIntId;
-    lexer.m_symbol_id[log_surgeon::cTokenFloat] = (int) log_surgeon::SymbolID::TokenFloatId;
     lexer.m_symbol_id[log_surgeon::cTokenFirstTimestamp] = (int) log_surgeon::SymbolID::TokenFirstTimestampId;
     lexer.m_symbol_id[log_surgeon::cTokenNewlineTimestamp] = (int) log_surgeon::SymbolID::TokenNewlineTimestampId;
+    lexer.m_symbol_id[log_surgeon::cTokenInt] = (int) log_surgeon::SymbolID::TokenIntId;
+    lexer.m_symbol_id[log_surgeon::cTokenFloat] = (int) log_surgeon::SymbolID::TokenFloatId;
     lexer.m_symbol_id[log_surgeon::cTokenNewline] = (int) log_surgeon::SymbolID::TokenNewlineId;
 
     lexer.m_id_symbol[(int) log_surgeon::SymbolID::TokenEndID] = log_surgeon::cTokenEnd;
     lexer.m_id_symbol[(int) log_surgeon::SymbolID::TokenUncaughtStringID] =
             log_surgeon::cTokenUncaughtString;
-    lexer.m_id_symbol[(int) log_surgeon::SymbolID::TokenIntId] = log_surgeon::cTokenInt;
-    lexer.m_id_symbol[(int) log_surgeon::SymbolID::TokenFloatId] = log_surgeon::cTokenFloat;
     lexer.m_id_symbol[(int) log_surgeon::SymbolID::TokenFirstTimestampId] =
             log_surgeon::cTokenFirstTimestamp;
     lexer.m_id_symbol[(int) log_surgeon::SymbolID::TokenNewlineTimestampId] =
             log_surgeon::cTokenNewlineTimestamp;
+    lexer.m_id_symbol[(int) log_surgeon::SymbolID::TokenIntId] = log_surgeon::cTokenInt;
+    lexer.m_id_symbol[(int) log_surgeon::SymbolID::TokenFloatId] = log_surgeon::cTokenFloat;
     lexer.m_id_symbol[(int) log_surgeon::SymbolID::TokenNewlineId] = log_surgeon::cTokenNewline;
 
     /// TODO: figure out why this needs to be specially added
