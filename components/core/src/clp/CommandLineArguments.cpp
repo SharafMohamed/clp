@@ -160,12 +160,13 @@ namespace clp {
                 // Define extraction hidden positional options
                 po::options_description extraction_positional_options;
                 extraction_positional_options.add_options()
-                        ("archives-dir", po::value<string>(&m_archives_dir))
                         ("ts-file-path", po::value<string>(&m_ts_patterns_file_path))
+                        ("archives-dir", po::value<string>(&m_archives_dir))
                         ("output-dir", po::value<string>(&m_output_dir))
                         ("paths", po::value< vector<string> >(&m_input_paths)->composing())
                         ;
                 po::positional_options_description extraction_positional_options_description;
+                extraction_positional_options_description.add("ts-file-path", 1);
                 extraction_positional_options_description.add("archives-dir", 1);
                 extraction_positional_options_description.add("output-dir", 1);
                 extraction_positional_options_description.add("paths", -1);

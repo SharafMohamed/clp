@@ -73,7 +73,7 @@ auto TimestampPatternsFileParser::try_timestamp_patterns_file(string const& sche
 auto TimestampPatternsFileParser::timestamp_pattern_rule(NonTerminal* m) -> unique_ptr<ParserAST> {
     ///TODO: how should this fail if m_current_timestamp_num_spaces is too big for uint8_t?
     for(uint8_t i = 0; i < stoi(m_current_timestamp_num_spaces); i++) {
-        m_current_timestamp_regex.insert(0, "[^ ]+ ");
+        m_current_timestamp_regex.insert(0, "[^ \\n]+ ");
     }
     m_timestamp_patterns.emplace_back(stoi(m_current_timestamp_num_spaces), 
                                       m_current_timestamp_format, 
