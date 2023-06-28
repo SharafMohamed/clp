@@ -8,8 +8,8 @@
 // Date library
 #include "../submodules/date/include/date/date.h"
 
-// spdlog
-#include <spdlog/spdlog.h>
+// Project headers
+#include "spdlog_with_specializations.hpp"
 
 using std::string;
 using std::to_string;
@@ -454,9 +454,13 @@ bool TimestampPattern::parse_timestamp (const string& line, epochtime_t& timesta
 
                 case 'r': { // Relative timestamp in millisecond
                     int cFieldLength = 0;
+                    // no leading zeroes currently supported for relative timestamp
+                    if(line[line_ix] == '0') {
+                        return false;
+                    }
                     while(line_ix + cFieldLength < line_length) {
-                        if('0' <= line[line_ix + cFieldLength] && line[line_ix + cFieldLength] <= 
-                           '9') 
+                        if('0' <= line[line_ix + cFieldLength] && line[line_ix + cFieldLength] <=
+                                                                  '9')
                         {
                             cFieldLength++;
                         } else {
@@ -467,8 +471,8 @@ bool TimestampPattern::parse_timestamp (const string& line, epochtime_t& timesta
                         return false;
                     }
                     int value;
-                    if (!convert_string_to_number(line, line_ix, line_ix + cFieldLength, '0', 
-                                                  value) || value < 0) 
+                    if (!convert_string_to_number(line, line_ix, line_ix + cFieldLength, '0',
+                                                  value) || value < 0)
                     {
                         return false;
                     }

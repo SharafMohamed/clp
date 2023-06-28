@@ -5,7 +5,6 @@
 
 // spdlog
 #include <spdlog/sinks/stdout_sinks.h>
-#include <spdlog/spdlog.h>
 
 // Log Surgeon
 #include <log_surgeon/LogParser.hpp>
@@ -13,6 +12,7 @@
 // Project headers
 #include "../Profiler.hpp"
 #include "../TimestampPatternsFileParser.hpp"
+#include "../spdlog_with_specializations.hpp"
 #include "../Utils.hpp"
 #include "CommandLineArguments.hpp"
 #include "compression.hpp"

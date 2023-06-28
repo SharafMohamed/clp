@@ -21,6 +21,7 @@
 #include <log_surgeon/SchemaParser.hpp>
 
 // Project headers
+#include "spdlog_with_specializations.hpp"
 #include "string_utils.hpp"
 
 using std::list;

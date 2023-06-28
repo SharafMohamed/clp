@@ -28,6 +28,7 @@
 // Project headers
 #include "../../clp/utils.hpp"
 #include "../../EncodedVariableInterpreter.hpp"
+#include "../../spdlog_with_specializations.hpp"
 #include "../../Utils.hpp"
 #include "../Constants.hpp"
 
