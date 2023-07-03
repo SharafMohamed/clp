@@ -97,7 +97,7 @@ auto TimestampPatternsFileParser::new_num_spaces_rule(NonTerminal* m) -> unique_
 
 auto TimestampPatternsFileParser::percent_r_rule(NonTerminal* /* m */) -> unique_ptr<ParserAST> {
     m_current_timestamp_format += "%r";
-    m_current_timestamp_regex += "\\d+";
+    m_current_timestamp_regex += "[1-9]\\d*";
     return nullptr;
 }
 

@@ -287,6 +287,9 @@ namespace streaming_archive::writer {
     }
     
     void Archive::write_msg_using_schema (LogEventView& log_view) {
+        m_encoded_vars.clear();
+        m_var_ids.clear();
+        m_logtype_dict_entry.clear();
         epochtime_t timestamp = 0;
         TimestampPattern* timestamp_pattern = nullptr;
         if (log_view.get_log_output_buffer()->has_timestamp()) {
@@ -294,6 +297,8 @@ namespace streaming_archive::writer {
             size_t end;
             timestamp_pattern = (TimestampPattern*) TimestampPattern::search_known_ts_patterns(
                     log_view.get_timestamp()->to_string(), timestamp, start, end);
+            // Add any variables before the timestamp (currently types unknown)
+            m_logtype_dict_entry.add_constant(log_view.get_timestamp()->to_string(), 0, start);
             if (m_old_ts_pattern != *timestamp_pattern) {
                 change_ts_pattern(timestamp_pattern);
                 m_old_ts_pattern = *timestamp_pattern;
@@ -313,9 +318,6 @@ namespace streaming_archive::writer {
         } else if (m_file->get_encoded_size_in_bytes() >= m_target_encoded_file_size) {
             clp::split_file(m_path_for_compression, m_group_id, timestamp_pattern, *this);
         }
-        m_encoded_vars.clear();
-        m_var_ids.clear();
-        m_logtype_dict_entry.clear();
         size_t num_uncompressed_bytes = 0;
         // Timestamp is included in the uncompressed message size
         uint32_t start_pos = log_view.get_log_output_buffer()->get_token(0).m_start_pos;
