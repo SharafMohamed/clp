@@ -308,7 +308,15 @@ Archive::write_msg(epochtime_t timestamp, string const& message, size_t num_unco
             var_ids
     );
     logtype_dictionary_id_t logtype_id;
-    m_logtype_dict.add_entry(m_logtype_dict_entry, logtype_id);
+
+    static uint32_t i{0};
+    if (m_logtype_dict.add_entry(m_logtype_dict_entry, logtype_id)) {
+        SPDLOG_INFO("{}", message);
+        i++;
+        if(i > 1000) {
+            exit(1);
+        }
+    }
 
     m_file->write_encoded_msg(timestamp, logtype_id, encoded_vars, var_ids, num_uncompressed_bytes);
 
